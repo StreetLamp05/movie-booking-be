@@ -1,4 +1,7 @@
 from .. import db
+from .movie import Movie
+from .category import Category
+from .movie_category import movie_categories
 
 class User(db.Model):
     __tablename__ = "users"

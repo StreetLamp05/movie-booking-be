@@ -10,6 +10,8 @@ build/
 .env.*
 !env.example
 
+.idea
+.idea/
 
 db_data/
 *.pid
