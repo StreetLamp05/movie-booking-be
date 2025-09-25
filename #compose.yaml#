@@ -16,8 +16,6 @@ services: db: image: postgres:16 ports: - "5432:5432" environment:
     volumes:
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
-      # optional: mount your local Poetry cache to speed up builds:
-      # - ~/.cache/pypoetry:/root/.cache/pypoetry
     depends_on:
       db:
         condition: service_healthy

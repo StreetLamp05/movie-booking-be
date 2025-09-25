@@ -25,10 +25,9 @@ services:
     ports:
       - "5000:5000"
     volumes:
+      # assistance from llm
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
-      # optional: mount your local Poetry cache to speed up builds:
-      # - ~/.cache/pypoetry:/root/.cache/pypoetry
     depends_on:
       db:
         condition: service_healthy
