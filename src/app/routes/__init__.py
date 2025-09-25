@@ -13,4 +13,4 @@ def seed():
     u = User(email="test@example.com")
     db.session.add(u)
     db.session.commit()
-    return {"created": u.id}
+    return {"created": u.id}, 201
