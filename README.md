@@ -25,10 +25,8 @@ DB_USER=app_user
 DB_PASSWORD=app_pass
 DB_NAME=app_dev
 
-# SQLAlchemy DSN (used by Flask)
 SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://app_user:app_pass@db:5432/app_dev
 
-# CORS (add your frontend origins here)
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 EOF
 ```
