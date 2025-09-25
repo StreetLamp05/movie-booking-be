@@ -13,23 +13,7 @@ cd movie-booking-be
 cp .env.example .env.development
 ```
 
-``` shell
-cat > .env.development << 'EOF'
-FLASK_ENV=development
-SECRET_KEY=dev-change-me
-
-# Postgres (matches docker-compose)
-DB_HOST=db
-DB_PORT=5432
-DB_USER=app_user
-DB_PASSWORD=app_pass
-DB_NAME=app_dev
-
-SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://app_user:app_pass@db:5432/app_dev
-
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-EOF
-```
+set up .env, i have a copy of it, I'll give at meeting
 
 ```shell
 docker compose up --build -d
