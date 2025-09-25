@@ -3,34 +3,38 @@ services:
     image: postgres:16
     ports:
       - "5432:5432"
-    env_file:
-      - .env.development
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
       interval: 3s
       timeout: 3s
       retries: 10
+
+
 
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["/app/entrypoint.sh"]
+    command: [ "/app/entrypoint.sh" ]
     env_file:
-      - .env.development
+      - .env
     ports:
       - "5000:5000"
     volumes:
-      # assistance from llm
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
       - ./wsgi.py:/app/wsgi.py:rw
     depends_on:
       db:
         condition: service_healthy
+
 
 volumes:
   db_data:
