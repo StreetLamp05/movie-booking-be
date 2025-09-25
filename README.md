@@ -1,6 +1,6 @@
 quick start
 
-git clone ___
+git clone https://github.com/StreetLamp05/movie-booking-be.git
 cd movie-booking-be
 
 cp .env.example .env.development
