@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 from .config import Config
 
 db = SQLAlchemy()
@@ -13,11 +14,15 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # register blueprints
-    from .routes import bp as routes_bp
-    app.register_blueprint(routes_bp)
+    # CORS only for /api/*
+    CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", [])}},
+         supports_credentials=True)
 
-    # simple root
+    # register blueprints under /api/v1
+    from .routes import bp as routes_bp
+    app.register_blueprint(routes_bp, url_prefix="/api/v1")
+
+    # root ping (optional)
     @app.get("/")
     def index():
         return {"status": "ok"}

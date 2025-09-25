@@ -28,6 +28,7 @@ services:
       # assistance from llm
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
+      - ./wsgi.py:/app/wsgi.py:rw
     depends_on:
       db:
         condition: service_healthy

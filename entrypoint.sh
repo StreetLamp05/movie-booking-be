@@ -12,3 +12,4 @@ poetry run flask db upgrade || true
 
 echo "Starting Flask dev server..."
 exec poetry run flask run --host=0.0.0.0 --port=5000 --debug
+# exec poetry run gunicorn -w 3 -b 0.0.0.0:5000 wsgi:application
