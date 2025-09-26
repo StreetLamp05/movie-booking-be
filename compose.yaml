@@ -31,6 +31,7 @@ services:
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
       - ./wsgi.py:/app/wsgi.py:rw
+      - ./migrations:/app/migrations:rw
     depends_on:
       db:
         condition: service_healthy
