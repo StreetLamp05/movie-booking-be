@@ -6,10 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="023f5cd7-1111-4459-b315-184a7a22602e" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/6bb928d2-cfea-4ef3-a7ff-c8a4095d8814/storage_v2/_src_/database/postgres.edMnLQ/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/6bb928d2-cfea-4ef3-a7ff-c8a4095d8814/storage_v2/_src_/database/postgres.edMnLQ/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/controllers/movie_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/controllers/movie_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/routes/movie_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/movie_routes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,7 +61,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;6-createmovie-post-apimovies&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;82138249&quot;,
     &quot;last_opened_file_path&quot;: &quot;/home/davidkan/Desktop/UbuntuProj/movie-booking-be&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,

@@ -30,6 +30,17 @@ def _bad_request(message, details=None):
 
 # controllers
 
+
+
+def get_movie(movie_id):
+    """GET /api/v1/movies/<movie_id>"""
+    movie = db.session.get(Movie, movie_id)
+    if not movie:
+        return jsonify({"error": {"code": "NOT_FOUND", "message": f"Movie {movie_id} not found"}}), 404
+    return jsonify(_movie_to_dict(movie)), 200
+
+
+
 def create_movie():
     """
     POST /api/v1/movies
