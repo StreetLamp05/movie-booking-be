@@ -3,12 +3,15 @@ from ..models import User
 from .. import db
 
 
-
 bp = Blueprint("routes", __name__)
 
 from .movie_routes import bp as movie_bp
+from .auditorium_routes import bp as auditorium_bp
+from .showtime_routes import bp as showtime_bp
 
 bp.register_blueprint(movie_bp)
+bp.register_blueprint(auditorium_bp)
+bp.register_blueprint(showtime_bp)
 
 
 @bp.get("/health")
