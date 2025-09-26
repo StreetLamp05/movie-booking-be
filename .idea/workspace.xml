@@ -33,7 +33,7 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/migrations/env.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/migrations/versions/8c288dedde53_init_schema.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -92,7 +92,7 @@
       <workItem from="1758735753727" duration="64000" />
       <workItem from="1758735819530" duration="691000" />
       <workItem from="1758748762418" duration="4826000" />
-      <workItem from="1758844385217" duration="1271000" />
+      <workItem from="1758844385217" duration="4142000" />
     </task>
     <servers />
   </component>
