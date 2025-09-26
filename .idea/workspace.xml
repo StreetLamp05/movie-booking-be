@@ -6,7 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="023f5cd7-1111-4459-b315-184a7a22602e" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/controllers/movie_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/controllers/movie_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/models/showtimes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/models/showtimes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/routes/movie_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/movie_routes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -58,7 +60,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "b8bdedc5",
+    "git-widget-placeholder": "d2aab499",
     "last_opened_file_path": "/home/davidkan/Desktop/UbuntuProj/movie-booking-be",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
