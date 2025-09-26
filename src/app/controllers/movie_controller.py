@@ -1,4 +1,6 @@
 from flask import request, jsonify
+from sqlalchemy import asc, desc
+from sqlalchemy.orm import joinedload
 from .. import db
 from ..models.movie import Movie
 from ..models.category import Category
@@ -30,7 +32,73 @@ def _bad_request(message, details=None):
 
 # controllers
 
+def get_movies():
+    """
+    GET /api/v1/movies
+    Query params:
+      q                (str)   - free-text search in title/director/producer
+      category         (str)   - filter by category name (can repeat)
+      category_mode    (str)   - "any" (default) or "all" matching categories
+      limit            (int)   - page size (default 20, max 100)
+      offset           (int)   - pagination offset (default 0)
+      sort             (str)   - "created_at.desc" (default), "created_at.asc", "title.asc/desc"
+    """
+    q = (request.args.get("q") or "").strip()
+    category_names = request.args.getlist("category")  # /movies?category=Sci-Fi&category=Thriller
+    category_mode = (request.args.get("category_mode") or "any").lower()
+    try:
+        limit = min(max(int(request.args.get("limit", 20)), 1), 100)
+    except ValueError:
+        limit = 20
+    try:
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except ValueError:
+        offset = 0
 
+    sort = (request.args.get("sort") or "created_at.desc").lower()
+    sort_map = {
+        "created_at.asc":  asc(Movie.created_at),
+        "created_at.desc": desc(Movie.created_at),
+        "title.asc":       asc(Movie.title),
+        "title.desc":      desc(Movie.title),
+    }
+    order_clause = sort_map.get(sort, desc(Movie.created_at))
+
+    query = Movie.query.options(joinedload(Movie.categories))
+
+    if q:
+        ilike = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                Movie.title.ilike(ilike),
+                Movie.director.ilike(ilike),
+                Movie.producer.ilike(ilike),
+            )
+        )
+
+    if category_names:
+        # Normalize names
+        norm = [c.strip() for c in category_names if c.strip()]
+        if norm:
+            if category_mode == "all":
+                # movies that have ALL of the given categories
+                for cname in norm:
+                    query = query.filter(
+                        Movie.categories.any(Category.name == cname)
+                    )
+            else:
+                # movies that have ANY of the given categories
+                query = query.filter(
+                    Movie.categories.any(Category.name.in_(norm))
+                )
+
+    total = query.count()
+    rows = query.order_by(order_clause).offset(offset).limit(limit).all()
+
+    return jsonify({
+        "data": [_movie_to_dict(m) for m in rows],
+        "page": {"limit": limit, "offset": offset, "total": total}
+    })
 
 def get_movie(movie_id):
     """GET /api/v1/movies/<movie_id>"""
