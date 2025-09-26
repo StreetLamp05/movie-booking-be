@@ -14,7 +14,7 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # CORS only for /api/*
+
     CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", [])}},
          supports_credentials=True)
 
