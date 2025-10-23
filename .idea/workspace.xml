@@ -5,11 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="023f5cd7-1111-4459-b315-184a7a22602e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/models/showtimes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/models/showtimes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/poetry.lock" beforeDir="false" afterPath="$PROJECT_DIR$/poetry.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/models/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/models/users.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/routes/movie_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/movie_routes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +40,7 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/migrations/versions/480f1a9532ed_update_users_schema_add_billinginfo_.py" root0="SKIP_INSPECTION" />
     <setting file="file://$PROJECT_DIR$/migrations/versions/8c288dedde53_init_schema.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProjectColorInfo">{
@@ -60,8 +62,8 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "d2aab499",
-    "last_opened_file_path": "/home/davidkan/Desktop/UbuntuProj/movie-booking-be",
+    "git-widget-placeholder": "users",
+    "last_opened_file_path": "/home/davidkan/Desktop/UbuntuProj/flask-skeleton",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -83,8 +85,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-PY-252.26199.168" />
-        <option value="bundled-python-sdk-b3d66beaba9a-c6efb3732140-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26199.168" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-PY-252.26830.99" />
+        <option value="bundled-python-sdk-164cda30dcd9-0af03a5fa574-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26830.99" />
       </set>
     </attachedChunks>
   </component>
@@ -99,6 +101,12 @@
       <workItem from="1758735819530" duration="691000" />
       <workItem from="1758748762418" duration="4826000" />
       <workItem from="1758844385217" duration="4142000" />
+      <workItem from="1759356262102" duration="549000" />
+      <workItem from="1760548896330" duration="7000" />
+      <workItem from="1761116278128" duration="5000" />
+      <workItem from="1761154852748" duration="1044000" />
+      <workItem from="1761195453787" duration="4419000" />
+      <workItem from="1761238976046" duration="129000" />
     </task>
     <servers />
   </component>
