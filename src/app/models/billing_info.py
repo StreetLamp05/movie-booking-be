@@ -20,8 +20,7 @@ class BillingInfo(db.Model):
         nullable=False
     )
 
-    first_name = db.Column(db.Text, nullable=False)
-    last_name = db.Column(db.Text, nullable=False)
+    cardholder_name = db.Column(db.Text, nullable=False)
 
     card_type = db.Column(
         Enum("debit", "credit", name="card_type_enum", create_type=True),

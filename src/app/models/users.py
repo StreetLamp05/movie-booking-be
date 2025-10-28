@@ -1,4 +1,3 @@
-# src/app/models/user.py
 from .. import db
 from sqlalchemy.sql import func
 import uuid
@@ -18,6 +17,7 @@ class User(db.Model):
     last_name  = db.Column(db.Text, nullable=False)
 
     email = db.Column(db.Text, nullable=False, index=True, unique=True)
+    is_verified = db.Column(db.Boolean, nullable=False, default=False)
     phone_number = db.Column(db.String(10))
     password_hash = db.Column(db.Text, nullable=False)
 
