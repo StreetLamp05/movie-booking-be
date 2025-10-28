@@ -5,9 +5,30 @@ from ..models.users import User
 from ..models.billing_info import BillingInfo
 import re
 import uuid
+import jwt
+import os
 
-# Hardcoded for now
-TEST_USER_ID = "123e4567-e89b-12d3-a456-426614174000"
+def get_user_from_token():
+    """Extract user from JWT token in Authorization header"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return None, (jsonify({'error': 'Authorization header is missing'}), 401)
+    
+    try:
+        token = auth_header.split(' ')[1]
+        payload = jwt.decode(token, os.environ.get('JWT_SECRET_KEY', 'your-secret-key'), algorithms=['HS256'])
+        user = User.query.filter_by(user_id=payload['user_id']).first()
+        
+        if not user:
+            return None, (jsonify({'error': 'User not found'}), 404)
+        
+        return user, None
+    except jwt.ExpiredSignatureError:
+        return None, (jsonify({'error': 'Token has expired'}), 401)
+    except jwt.InvalidTokenError:
+        return None, (jsonify({'error': 'Invalid token'}), 401)
+    except Exception as e:
+        return None, (jsonify({'error': f'Authentication failed: {str(e)}'}), 401)
 
 
 def _user_to_dict(user: User, include_cards=False):
@@ -45,31 +66,17 @@ def _user_to_dict(user: User, include_cards=False):
 
 def get_user_profile():
     """GET /api/v1/users/profile"""
-    # create the test if not exist
-    user = User.query.filter_by(user_id=uuid.UUID(TEST_USER_ID)).first()
-    if not user:
-        user = User(
-            user_id=uuid.UUID(TEST_USER_ID),
-            email="test@example.com",
-            first_name="Test",
-            last_name="User",
-            password_hash="test123",
-            is_email_list=True
-        )
-        db.session.add(user)
-        try:
-            db.session.commit()
-        except IntegrityError:
-            db.session.rollback()
-            return jsonify({"error": {"code": "CONFLICT", "message": "Failed to create test user"}}), 409
+    user, error = get_user_from_token()
+    if error:
+        return error
     
     return jsonify(_user_to_dict(user, include_cards=True))
 
 def update_user_profile():
     """PUT /api/v1/users/profile"""
-    user = User.query.filter_by(user_id=uuid.UUID(TEST_USER_ID)).first()
-    if not user:
-        return jsonify({"error": {"code": "NOT_FOUND", "message": "User not found"}}), 404
+    user, error = get_user_from_token()
+    if error:
+        return error
     
     data = request.get_json(silent=True) or {}
     
@@ -113,7 +120,11 @@ def update_user_profile():
 
 def get_user_cards():
     """GET /api/v1/users/cards"""
-    cards = BillingInfo.query.filter_by(user_id=uuid.UUID(TEST_USER_ID)).all()
+    user, error = get_user_from_token()
+    if error:
+        return error
+    
+    cards = BillingInfo.query.filter_by(user_id=user.user_id).all()
     return jsonify([{
         "billing_info_id": str(card.billing_info_id),
         "card_type": card.card_type,
@@ -128,8 +139,12 @@ def get_user_cards():
 
 def add_user_card():
     """POST /api/v1/users/cards"""
+    user, error = get_user_from_token()
+    if error:
+        return error
+    
     # check against limit
-    card_count = BillingInfo.query.filter_by(user_id=uuid.UUID(TEST_USER_ID)).count()
+    card_count = BillingInfo.query.filter_by(user_id=user.user_id).count()
     if card_count >= 4:
         return jsonify({
             "error": {
@@ -167,9 +182,8 @@ def add_user_card():
             }
         }), 400
     
-    user = User.query.filter_by(user_id=uuid.UUID(TEST_USER_ID)).first()
     card = BillingInfo(
-        user_id=uuid.UUID(TEST_USER_ID),
+        user_id=user.user_id,
         card_type=data["card_type"],
         card_number=card_number,
         card_exp=data["card_exp"],
@@ -202,8 +216,12 @@ def add_user_card():
 
 def delete_user_card(card_id):
     """DELETE /api/v1/users/cards/:id"""
+    user, error = get_user_from_token()
+    if error:
+        return error
+    
     card = BillingInfo.query.get(card_id)
-    if not card or str(card.user_id) != TEST_USER_ID:
+    if not card or card.user_id != user.user_id:
         return jsonify({"error": {"code": "NOT_FOUND", "message": "Card not found"}}), 404
     
     db.session.delete(card)
