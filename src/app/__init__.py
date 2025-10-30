@@ -1,3 +1,4 @@
+# app/__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -16,14 +17,17 @@ def create_app():
     migrate.init_app(app, db)
     mail.init_app(app)
 
-    CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", [])}},
-         supports_credentials=True)
+    # If CORS_ORIGINS is "", make it None (no cross-site CORS in dev)
+    origins = app.config.get("CORS_ORIGINS") or None
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": origins}},
+        supports_credentials=True,  # REQUIRED for cookies
+    )
 
-    # register blueprints under /api/v1
     from .routes import init_app
     init_app(app)
 
-    # root ping (optional)
     @app.get("/")
     def index():
         return {"status": "ok"}

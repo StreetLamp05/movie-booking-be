@@ -33,5 +33,14 @@ class User(db.Model):
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
+    # relationships
+    billing_infos = db.relationship(
+        "BillingInfo",
+        backref="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
     def __repr__(self):
         return f"<User {self.email}>"

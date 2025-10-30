@@ -16,7 +16,8 @@ def login():
 def logout():
     return AuthController.logout()
 
-@auth_bp.route("/verify", methods=["POST"])
+# Allow both GET (browser checks) and POST (programmatic)
+@auth_bp.route("/verify", methods=["GET", "POST"])
 def verify_token():
     return AuthController.verify_token()
 

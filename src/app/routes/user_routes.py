@@ -4,21 +4,18 @@ from ..controllers.user_controller import (
     update_user_profile,
     get_user_cards,
     add_user_card,
-    delete_user_card
+    delete_user_card,
+    update_user_card,   # <-- add
 )
 
 bp = Blueprint("user_routes", __name__, url_prefix="/users")
 
-# Profile routes
-# GET /api/v1/users/profile
+# Profile
 bp.get("/profile")(get_user_profile)
-# POST /api/v1/users/profile
 bp.put("/profile")(update_user_profile)
 
-# Card Routes
-# GET /api/v1/users/cards
+# Cards
 bp.get("/cards")(get_user_cards)
-# POST  /api/v1/users/cards
 bp.post("/cards")(add_user_card)
-# DELETE /api/v1/users/cards/<card_id>
+bp.patch("/cards/<card_id>")(update_user_card)   # <-- new
 bp.delete("/cards/<card_id>")(delete_user_card)

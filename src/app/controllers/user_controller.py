@@ -7,21 +7,21 @@ from .. import db
 from ..models.users import User
 from ..models.billing_info import BillingInfo
 
+STATE_RE = re.compile(r"^[A-Z]{2}$")
+ZIP5_RE  = re.compile(r"^\d{5}$")
+MMYY_RE  = re.compile(r"^(0[1-9]|1[0-2])/\d{2}$")
+CARD16_RE = re.compile(r"^\d{16}$")
 
 def get_user_from_token():
-    """Extract user via JWT from cookie (preferred) or Bearer header. Enforce verified."""
-    token = request.cookies.get(current_app.config["JWT_COOKIE_NAME"])
-    if not token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header.split(" ", 1)[1]
-    if not token:
+    tok = request.cookies.get(current_app.config["JWT_COOKIE_NAME"])
+    if not tok:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            tok = auth.split(" ", 1)[1]
+    if not tok:
         return None, (jsonify({"error": "Not authenticated"}), 401)
-
     try:
-        payload = jwt.decode(
-            token, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"]
-        )
+        payload = jwt.decode(tok, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"])
         user = User.query.filter_by(user_id=payload["user_id"]).first()
         if not user:
             return None, (jsonify({"error": "User not found"}), 404)
@@ -34,7 +34,6 @@ def get_user_from_token():
         return None, (jsonify({"error": "Invalid token"}), 401)
     except Exception as e:
         return None, (jsonify({"error": f"Authentication failed: {str(e)}"}), 401)
-
 
 def _user_to_dict(user: User, include_cards: bool = False):
     data = {
@@ -54,37 +53,39 @@ def _user_to_dict(user: User, include_cards: bool = False):
             "zip_code": user.home_zip_code,
         },
     }
-
     if include_cards:
-        cards = BillingInfo.query.filter_by(user_id=user.user_id).all()
-        data["payment_cards"] = [
-            {
-                "billing_info_id": str(card.billing_info_id),
-                "card_type": card.card_type,
-                "card_number": f"****{card.card_number[-4:]}",
-                "card_exp": card.card_exp,
-                "billing_address": {
-                    "street": card.billing_street,
-                    "state": card.billing_state,
-                    "zip_code": card.billing_zip_code,
-                },
-            }
-            for card in cards
-        ]
+        cards = BillingInfo.query.filter_by(user_id=user.user_id).order_by(BillingInfo.created_at.desc()).all()
+        data["payment_cards"] = [_card_to_public_dict(c) for c in cards]
     return data
 
+def _card_to_public_dict(card: BillingInfo):
+    return {
+        "billing_info_id": str(card.billing_info_id),
+        "card_type": card.card_type,
+        "cardholder_name": card.cardholder_name,
+        "card_last4": card.card_number[-4:],
+        "card_exp": card.card_exp,
+        "billing_address": {
+            "street": card.billing_street,
+            "city": card.billing_city,
+            "state": card.billing_state,
+            "zip_code": card.billing_zip_code,
+        },
+        "created_at": card.created_at.isoformat() if card.created_at else None,
+    }
+
+# get/ put
 
 def get_user_profile():
     user, error = get_user_from_token()
     if error:
         return error
-    return jsonify(_user_to_dict(user, include_cards=True))
-
+    return jsonify(_user_to_dict(user, include_cards=True)), 200
 
 def update_user_profile():
     """
-    Regular users: can edit names/phone/address/is_email_list, NOT email.
-    Admins: may also change email (unique check). Password allowed inline.
+    Regular users can edit: first/last name, phone_number (10 digits), address, is_email_list, password
+    Email change is admin-only (kept as-is).
     """
     user, error = get_user_from_token()
     if error:
@@ -94,84 +95,56 @@ def update_user_profile():
 
     # Names
     if "first_name" in data:
-        user.first_name = data["first_name"]
+        user.first_name = (data["first_name"] or "").strip()
     if "last_name" in data:
-        user.last_name = data["last_name"]
+        user.last_name = (data["last_name"] or "").strip()
 
-    # Phone (normalize to digits)
+    # Phone
     if "phone_number" in data:
-        phone = re.sub(r"\D", "", str(data["phone_number"]))
-        if len(phone) != 10:
-            return (
-                jsonify(
-                    {
-                        "error": {
-                            "code": "BAD_REQUEST",
-                            "message": "Phone number must be 10 digits",
-                        }
-                    }
-                ),
-                400,
-            )
-        user.phone_number = phone
+        digits = re.sub(r"\D", "", str(data["phone_number"]))
+        if len(digits) != 10:
+            return jsonify({"error": {"code": "BAD_REQUEST", "message": "Phone number must be 10 digits"}}), 400
+        user.phone_number = digits
 
     # Address
-    address = data.get("address", {})
-    if address:
-        user.home_street = address.get("street", user.home_street)
-        user.home_city = address.get("city", user.home_city)
-        user.home_state = address.get("state", user.home_state)
-        user.home_country = address.get("country", user.home_country)
-        user.home_zip_code = address.get("zip_code", user.home_zip_code)
+    if "address" in data and isinstance(data["address"], dict):
+        addr = data["address"]
+        if "state" in addr and addr["state"]:
+            st = str(addr["state"]).upper()
+            if not STATE_RE.match(st):
+                return jsonify({"error": {"code": "BAD_REQUEST", "message": "State must be 2-letter US code"}}), 400
+            user.home_state = st
+        if "zip_code" in addr and addr["zip_code"]:
+            z = str(addr["zip_code"])
+            if not ZIP5_RE.match(z):
+                return jsonify({"error": {"code": "BAD_REQUEST", "message": "ZIP must be 5 digits"}}), 400
+            user.home_zip_code = z
+        if "street" in addr:
+            user.home_street = addr["street"]
+        if "city" in addr:
+            user.home_city = addr["city"]
+        if "country" in addr:
+            user.home_country = addr["country"]
 
-    # email list subscription
+    # email list
     if "is_email_list" in data:
         user.is_email_list = bool(data["is_email_list"])
 
-    # Password inline (optional)
+    # Password (inline)
     if "password" in data and data["password"]:
         from werkzeug.security import generate_password_hash
-
         user.password_hash = generate_password_hash(data["password"])
 
-    # EMAIL EDIT RULES
-    new_email = data.get("email")
-    if new_email is not None:
+    # Email change (admin-only, unchanged from your rules)
+    if "email" in data and data["email"] is not None:
         if not user.is_admin:
-            return (
-                jsonify(
-                    {
-                        "error": {
-                            "code": "FORBIDDEN",
-                            "message": "Email cannot be changed",
-                        }
-                    }
-                ),
-                403,
-            )
-        new_email = new_email.strip().lower()
+            return jsonify({"error": {"code": "FORBIDDEN", "message": "Email cannot be changed"}}), 403
+        new_email = (data["email"] or "").strip().lower()
         if not new_email:
-            return (
-                jsonify(
-                    {
-                        "error": {
-                            "code": "BAD_REQUEST",
-                            "message": "Email cannot be empty",
-                        }
-                    }
-                ),
-                400,
-            )
-        exists = User.query.filter(
-            User.email == new_email, User.user_id != user.user_id
-        ).first()
+            return jsonify({"error": {"code": "BAD_REQUEST", "message": "Email cannot be empty"}}), 400
+        exists = User.query.filter(User.email == new_email, User.user_id != user.user_id).first()
         if exists:
-            return (
-                jsonify(
-                    {"error": {"code": "CONFLICT", "message": "Email already in use"}}
-                ),
-                409,
-            )
+            return jsonify({"error": {"code": "CONFLICT", "message": "Email already in use"}}), 409
         user.email = new_email
 
     try:
@@ -180,113 +153,72 @@ def update_user_profile():
         db.session.rollback()
         return jsonify({"error": {"code": "CONFLICT", "message": str(e)}}), 409
 
-    return jsonify(_user_to_dict(user, include_cards=True))
+    return jsonify(_user_to_dict(user, include_cards=True)), 200
 
+# ===== Billing (GET/POST/PATCH/DELETE) =====
 
 def get_user_cards():
     user, error = get_user_from_token()
     if error:
         return error
-
-    cards = BillingInfo.query.filter_by(user_id=user.user_id).all()
-    return jsonify(
-        [
-            {
-                "billing_info_id": str(card.billing_info_id),
-                "card_type": card.card_type,
-                "card_number": f"****{card.card_number[-4:]}",
-                "card_exp": card.card_exp,
-                "billing_address": {
-                    "street": card.billing_street,
-                    "state": card.billing_state,
-                    "zip_code": card.billing_zip_code,
-                },
-            }
-            for card in cards
-        ]
-    )
-
+    cards = BillingInfo.query.filter_by(user_id=user.user_id).order_by(BillingInfo.created_at.desc()).all()
+    return jsonify([_card_to_public_dict(c) for c in cards]), 200
 
 def add_user_card():
     user, error = get_user_from_token()
     if error:
         return error
 
-    # cap at 4 cards
     if BillingInfo.query.filter_by(user_id=user.user_id).count() >= 4:
-        return (
-            jsonify(
-                {
-                    "error": {
-                        "code": "CONFLICT",
-                        "message": "Maximum number of cards (4) reached",
-                    }
-                }
-            ),
-            409,
-        )
+        return jsonify({"error": {"code": "CONFLICT", "message": "Maximum number of cards (4) reached"}}), 409
 
     data = request.get_json(silent=True) or {}
     required = [
         "card_type",
         "card_number",
         "card_exp",
+        "cardholder_name",
         "billing_street",
+        "billing_city",
         "billing_state",
         "billing_zip_code",
     ]
-    if not all(k in data for k in required):
-        return (
-            jsonify(
-                {
-                    "error": {
-                        "code": "BAD_REQUEST",
-                        "message": f"Missing required fields: {', '.join(required)}",
-                    }
-                }
-            ),
-            400,
-        )
+    missing = [k for k in required if not data.get(k)]
+    if missing:
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": f"Missing: {', '.join(missing)}"}}), 400
 
-    # 16 digits
-    card_number = re.sub(r"\D", "", str(data["card_number"]))
-    if len(card_number) != 16:
-        return (
-            jsonify(
-                {
-                    "error": {
-                        "code": "BAD_REQUEST",
-                        "message": "Card number must be 16 digits",
-                    }
-                }
-            ),
-            400,
-        )
+    card_type = str(data["card_type"])
+    if card_type not in ("debit", "credit"):
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_type must be 'debit' or 'credit'"}}), 400
 
-    # MM/YY
-    if not re.match(r"^\d{2}/\d{2}$", str(data["card_exp"])):
-        return (
-            jsonify(
-                {
-                    "error": {
-                        "code": "BAD_REQUEST",
-                        "message": "Card expiration must be in MM/YY format",
-                    }
-                }
-            ),
-            400,
-        )
+    num = re.sub(r"\D", "", str(data["card_number"]))
+    if not CARD16_RE.match(num):
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_number must be 16 digits"}}), 400
+
+    exp = str(data["card_exp"])
+    if not MMYY_RE.match(exp):
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_exp must be MM/YY"}}), 400
+
+    state = str(data["billing_state"]).upper()
+    if not STATE_RE.match(state):
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_state must be 2-letter US code"}}), 400
+
+    zip5 = str(data["billing_zip_code"])
+    if not ZIP5_RE.match(zip5):
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_zip_code must be 5 digits"}}), 400
 
     card = BillingInfo(
         user_id=user.user_id,
-        card_type=data["card_type"],
-        card_number=card_number,
-        card_exp=data["card_exp"],
-        billing_street=data["billing_street"],
-        billing_state=data["billing_state"],
-        billing_zip_code=data["billing_zip_code"],
-        first_name=user.first_name,
+        first_name=user.first_name,    # keep backfill fields per your model
         last_name=user.last_name,
+        cardholder_name=str(data["cardholder_name"]),
+        billing_city=str(data["billing_city"]),
+        card_type=card_type,
+        card_number=num,
+        card_exp=exp,
+        billing_street=str(data["billing_street"]),
+        billing_state=state,
+        billing_zip_code=zip5,
     )
 
     db.session.add(card)
@@ -296,23 +228,65 @@ def add_user_card():
         db.session.rollback()
         return jsonify({"error": {"code": "CONFLICT", "message": str(e)}}), 409
 
-    return (
-        jsonify(
-            {
-                "billing_info_id": str(card.billing_info_id),
-                "card_type": card.card_type,
-                "card_number": f"****{card.card_number[-4:]}",
-                "card_exp": card.card_exp,
-                "billing_address": {
-                    "street": card.billing_street,
-                    "state": card.billing_state,
-                    "zip_code": card.billing_zip_code,
-                },
-            }
-        ),
-        201,
-    )
+    return jsonify(_card_to_public_dict(card)), 201
 
+def update_user_card(card_id):
+    user, error = get_user_from_token()
+    if error:
+        return error
+
+    card = BillingInfo.query.get(card_id)
+    if not card or card.user_id != user.user_id:
+        return jsonify({"error": {"code": "NOT_FOUND", "message": "Card not found"}}), 404
+
+    data = request.get_json(silent=True) or {}
+
+    if "cardholder_name" in data and data["cardholder_name"]:
+        card.cardholder_name = str(data["cardholder_name"])
+
+    if "card_exp" in data and data["card_exp"]:
+        exp = str(data["card_exp"])
+        if not MMYY_RE.match(exp):
+            return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_exp must be MM/YY"}}), 400
+        card.card_exp = exp
+
+    # address fields
+    addr_map = {
+        "billing_street": ("billing_street", None),
+        "billing_city":   ("billing_city",   None),
+        "billing_state":  ("billing_state",  "state"),
+        "billing_zip_code": ("billing_zip_code", "zip"),
+    }
+    for k, (attr, kind) in addr_map.items():
+        if k in data and data[k] is not None:
+            val = str(data[k])
+            if kind == "state":
+                val = val.upper()
+                if not STATE_RE.match(val):
+                    return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_state must be 2-letter US code"}}), 400
+            if kind == "zip":
+                if not ZIP5_RE.match(val):
+                    return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_zip_code must be 5 digits"}}), 400
+            setattr(card, attr, val)
+
+    # optional card_type change
+    if "card_type" in data and data["card_type"]:
+        ct = str(data["card_type"])
+        if ct not in ("debit", "credit"):
+            return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_type must be 'debit' or 'credit'"}}), 400
+        card.card_type = ct
+
+    # never allow updating full number via PATCH to avoid mistakes
+    if "card_number" in data:
+        return jsonify({"error": {"code": "FORBIDDEN", "message": "card_number cannot be updated; create a new card"}}), 403
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({"error": {"code": "CONFLICT", "message": str(e)}}), 409
+
+    return jsonify(_card_to_public_dict(card)), 200
 
 def delete_user_card(card_id):
     user, error = get_user_from_token()
