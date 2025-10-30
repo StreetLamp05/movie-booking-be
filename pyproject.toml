@@ -13,6 +13,7 @@ flask = "^3.1.2"
 flask-migrate = "^4.0.7"
 psycopg2-binary = "^2.9.9"
 flask-cors = "^6.0.1"
+pyjwt = "^2.8.0"
 flask-mail = "^0.10.0"
 
 

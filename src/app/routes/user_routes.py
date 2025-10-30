@@ -1,25 +1,21 @@
 from flask import Blueprint
 from ..controllers.user_controller import (
-    create_user,
-    get_user,
-    get_users,
-    edit_user,
-    delete_user,
+    get_user_profile,
+    update_user_profile,
+    get_user_cards,
+    add_user_card,
+    delete_user_card,
+    update_user_card,   # <-- add
 )
 
 bp = Blueprint("user_routes", __name__, url_prefix="/users")
 
-# POST /api/v1/users
-bp.post("")(create_user)
+# Profile
+bp.get("/profile")(get_user_profile)
+bp.put("/profile")(update_user_profile)
 
-# GET /api/v1/users/{user_id}
-bp.get("/<user_id>")(get_user)
-
-# GET /api/v1/users
-# for admin use
-bp.get("")(get_users)
-
-# PUT /api/v1/users/{user_id}
-bp.put("/<user_id>")(edit_user)
-
-bp.delete("/<user_id>")(delete_user)
+# Cards
+bp.get("/cards")(get_user_cards)
+bp.post("/cards")(add_user_card)
+bp.patch("/cards/<card_id>")(update_user_card)   # <-- new
+bp.delete("/cards/<card_id>")(delete_user_card)

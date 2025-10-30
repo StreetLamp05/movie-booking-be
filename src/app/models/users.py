@@ -23,6 +23,7 @@ class User(db.Model):
 
     is_admin = db.Column(db.Boolean, default=False)
     is_email_list = db.Column(db.Boolean, default=True)
+    is_verified = db.Column(db.Boolean, default=False)
 
     home_street  = db.Column(db.Text)
     home_city    = db.Column(db.Text)
@@ -31,6 +32,15 @@ class User(db.Model):
     home_zip_code = db.Column(db.String(9))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+
+    # relationships
+    billing_infos = db.relationship(
+        "BillingInfo",
+        backref="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
 
     def __repr__(self):
         return f"<User {self.email}>"
