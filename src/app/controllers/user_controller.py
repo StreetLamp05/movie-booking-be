@@ -21,6 +21,9 @@ def get_user_from_token():
         
         if not user:
             return None, (jsonify({'error': 'User not found'}), 404)
+        if not user.is_verified:
+            return None, (jsonify({'error': 'Email is not verified'}), 401)
+
         
         return user, None
     except jwt.ExpiredSignatureError:
