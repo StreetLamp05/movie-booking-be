@@ -36,6 +36,7 @@
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/migrations/versions/480f1a9532ed_update_users_schema_add_billinginfo_.py" root0="SKIP_INSPECTION" />
     <setting file="file://$PROJECT_DIR$/migrations/versions/8c288dedde53_init_schema.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProjectColorInfo">{
