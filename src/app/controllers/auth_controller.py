@@ -1,7 +1,6 @@
 from flask import jsonify, request, current_app, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
-import os
 
 from ..models.users import User
 from ..models.verification_tokens import VerificationToken
@@ -15,7 +14,7 @@ from .. import db
 
 try:
     import jwt
-except ImportError as e:
+except ImportError:
     jwt = None
 
 
@@ -42,7 +41,10 @@ class AuthController:
         required_fields = ["first_name", "last_name", "email", "password"]
         missing = [f for f in required_fields if not data.get(f)]
         if missing:
-            return jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}), 400
+            return (
+                jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}),
+                400,
+            )
 
         if User.query.filter_by(email=data["email"]).first():
             return jsonify({"error": "Email already registered"}), 409
@@ -69,11 +71,16 @@ class AuthController:
             except Exception as e:
                 current_app.logger.error(f"Failed to send verification email: {e}")
 
-            return jsonify(
-                {"message": "User created. Check your email for a verification code."}
-            ), 201
+            return (
+                jsonify(
+                    {
+                        "message": "User created. Check your email for a verification code."
+                    }
+                ),
+                201,
+            )
         except Exception as e:
-            db.session.rollback()
+            db.session.rollback
             return jsonify({"error": str(e)}), 500
 
     @staticmethod
@@ -91,11 +98,18 @@ class AuthController:
         if not user or not check_password_hash(user.password_hash, password):
             return jsonify({"error": "Invalid email or password"}), 401
 
-        # 🚫 Require email verification before login
+        # Require email verification before login
         if not user.is_verified:
-            return jsonify({"error": "Email not verified. Please verify your email before logging in."}), 403
+            return (
+                jsonify(
+                    {
+                        "error": "Email not verified. Please verify your email before logging in."
+                    }
+                ),
+                403,
+            )
 
-        exp = datetime.now(timezone.utc) + timedelta(days=current_app.config["JWT_EXPIRES_DAYS"])
+        exp = _now_utc() + timedelta(days=current_app.config["JWT_EXPIRES_DAYS"])
         try:
             token = jwt.encode(
                 {"user_id": str(user.user_id), "exp": exp},
@@ -111,7 +125,8 @@ class AuthController:
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "is_admin": bool(user.is_admin),
+                "is_admin": bool(user.is_admin),  # legacy flag
+                "role": "admin" if user.is_admin else "user",
                 "is_verified": bool(user.is_verified),
             }
         }
@@ -124,7 +139,9 @@ class AuthController:
             secure=current_app.config["JWT_COOKIE_SECURE"],
             samesite=current_app.config["JWT_COOKIE_SAMESITE"],
             path="/",
-            max_age=int(timedelta(days=current_app.config["JWT_EXPIRES_DAYS"]).total_seconds()),
+            max_age=int(
+                timedelta(days=current_app.config["JWT_EXPIRES_DAYS"]).total_seconds()
+            ),
         )
         return resp
 
@@ -148,13 +165,18 @@ class AuthController:
         email = data.get("email")
         code = data.get("code")
         if not email or not code:
-            return jsonify({"error": "Email and verification code are required"}), 400
+            return (
+                jsonify({"error": "Email and verification code are required"}),
+                400,
+            )
 
         user = User.query.filter_by(email=email).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        vtok = VerificationToken.query.filter_by(user_id=user.user_id, token=code).first()
+        vtok = VerificationToken.query.filter_by(
+            user_id=user.user_id, token=code
+        ).first()
         if not vtok:
             return jsonify({"error": "Invalid verification code"}), 400
         if vtok.is_expired:
@@ -228,16 +250,20 @@ class AuthController:
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        return jsonify(
-            {
-                "user_id": str(user.user_id),
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "is_verified": bool(user.is_verified),
-                "is_admin": bool(user.is_admin),
-            }
-        ), 200
+        return (
+            jsonify(
+                {
+                    "user_id": str(user.user_id),
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "is_verified": bool(user.is_verified),
+                    "is_admin": bool(user.is_admin),  # legacy
+                    "role": "admin" if user.is_admin else "user",
+                }
+            ),
+            200,
+        )
 
     @staticmethod
     def forgot_password():
@@ -245,12 +271,19 @@ class AuthController:
         email = data.get("email")
         # Always 200 for privacy
         if not email:
-            return jsonify({"message": "If that email exists, a reset code will be sent."}), 200
+            return (
+                jsonify(
+                    {"message": "If that email exists, a reset code will be sent."}
+                ),
+                200,
+            )
 
         user = User.query.filter_by(email=email).first()
         if user:
             try:
-                PasswordResetToken.query.filter_by(user_id=user.user_id, is_used=False).delete()
+                PasswordResetToken.query.filter_by(
+                    user_id=user.user_id, is_used=False
+                ).delete()
                 code = PasswordResetToken.generate_code()
                 rtok = PasswordResetToken(user_id=user.user_id, token=code)
                 db.session.add(rtok)
@@ -258,11 +291,20 @@ class AuthController:
                 try:
                     send_password_reset_email(user.email, code)
                 except Exception as e:
-                    current_app.logger.error(f"Failed to send password reset email: {e}")
+                    current_app.logger.error(
+                        f"Failed to send password reset email: {e}"
+                    )
             except Exception as e:
-                current_app.logger.error(f"Failed to create password reset token: {e}")
+                current_app.logger.error(
+                    f"Failed to create password reset token: {e}"
+                )
 
-        return jsonify({"message": "If that email exists, a reset code will be sent."}), 200
+        return (
+            jsonify(
+                {"message": "If that email exists, a reset code will be sent."}
+            ),
+            200,
+        )
 
     @staticmethod
     def reset_password():
@@ -271,13 +313,18 @@ class AuthController:
         code = data.get("code")
         new_password = data.get("new_password")
         if not email or not code or not new_password:
-            return jsonify({"error": "Email, code and new_password are required"}), 400
+            return (
+                jsonify({"error": "Email, code and new_password are required"}),
+                400,
+            )
 
         user = User.query.filter_by(email=email).first()
         if not user:
             return jsonify({"error": "Invalid email or code"}), 400
 
-        rtok = PasswordResetToken.query.filter_by(user_id=user.user_id, token=code).first()
+        rtok = PasswordResetToken.query.filter_by(
+            user_id=user.user_id, token=code
+        ).first()
         if not rtok:
             return jsonify({"error": "Invalid email or code"}), 400
         if rtok.is_used:
