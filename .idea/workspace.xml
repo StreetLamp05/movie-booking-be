@@ -5,9 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="023f5cd7-1111-4459-b315-184a7a22602e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/controllers/auth_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/controllers/auth_controller.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/controllers/user_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/controllers/user_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/middleware/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/middleware/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/routes/auth_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/routes/auth_routes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -100,7 +104,7 @@
       <workItem from="1758844385217" duration="4142000" />
       <workItem from="1761679439155" duration="1118000" />
       <workItem from="1761680569587" duration="1232000" />
-      <workItem from="1761776674865" duration="4318000" />
+      <workItem from="1761776674865" duration="6355000" />
     </task>
     <servers />
   </component>
