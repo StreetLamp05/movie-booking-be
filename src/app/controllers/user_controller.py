@@ -1,11 +1,14 @@
 from flask import request, jsonify, current_app
+from datetime import datetime
+from ..services.email_service import send_password_changed_email
 from sqlalchemy.exc import IntegrityError
 import re
 import jwt
-
+from datetime import datetime, timezone
 from .. import db
 from ..models.users import User
 from ..models.billing_info import BillingInfo
+from ..services.email_service import send_password_changed_email
 
 STATE_RE = re.compile(r"^[A-Z]{2}$")
 ZIP5_RE  = re.compile(r"^\d{5}$")
@@ -134,6 +137,14 @@ def update_user_profile():
     if "password" in data and data["password"]:
         from werkzeug.security import generate_password_hash
         user.password_hash = generate_password_hash(data["password"])
+        # notify user about password change (do not include the password)
+        try:
+            time_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            ip = request.remote_addr or "unknown"
+            ua = request.headers.get("User-Agent")
+            send_password_changed_email(user.email, time_str, ip, ua)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send password-changed email: {e}")
 
     # Email change (admin-only, unchanged from your rules)
     if "email" in data and data["email"] is not None:
