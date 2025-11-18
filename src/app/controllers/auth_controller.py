@@ -9,6 +9,7 @@ from ..services.email_service import (
     send_verification_email,
     generate_verification_code,
     send_password_reset_email,
+    send_password_changed_email,
 )
 from .. import db
 
@@ -343,6 +344,17 @@ class AuthController:
                 PasswordResetToken.token != code,
             ).delete()
             db.session.commit()
+            
+            # Notify user about password change
+            try:
+                from datetime import datetime, timezone
+                time_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                ip = request.remote_addr or "unknown"
+                ua = request.headers.get("User-Agent")
+                send_password_changed_email(user.email, time_str, ip, ua)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send password-changed email: {e}")
+            
             return jsonify({"message": "Password updated successfully"}), 200
         except Exception as e:
             db.session.rollback()
