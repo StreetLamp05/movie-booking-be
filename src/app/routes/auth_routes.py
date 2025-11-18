@@ -36,3 +36,8 @@ def forgot_password():
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     return AuthController.reset_password()
+
+
+@auth_bp.route("/change-password", methods=["POST"])
+def change_password():
+    return AuthController.change_password()
