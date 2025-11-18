@@ -139,13 +139,6 @@ def update_user_profile():
         user.password_hash = generate_password_hash(data["password"])
         # notify user about password change (do not include the password)
         try:
-            time_str = datetime.utcnow().isoformat() + "Z"
-            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-            ua = request.headers.get("User-Agent")
-            send_password_changed_email(user.email, time_str, ip, ua)
-        except Exception as e:
-            current_app.logger.error(f"Failed to send password-changed email: {e}")
-        try:
             time_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             ip = request.remote_addr or "unknown"
             ua = request.headers.get("User-Agent")
