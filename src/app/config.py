@@ -30,3 +30,8 @@ class Config:
     JWT_EXPIRES_DAYS = int(os.getenv("JWT_EXPIRES_DAYS", "1"))
     JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")  # Lax | None | Strict
     JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0") == "1"  # True in prod over HTTPS
+
+    # Card Encryption (Fernet key for encrypting payment card data at rest)
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Educational use only - this project handles test data with symmetric encryption
+    ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", None)
