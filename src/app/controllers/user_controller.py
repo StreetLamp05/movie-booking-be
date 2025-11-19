@@ -1,6 +1,7 @@
 from flask import request, jsonify, current_app
 from datetime import datetime
 from ..services.email_service import send_password_changed_email
+from ..services.encryption import CardEncryption
 from sqlalchemy.exc import IntegrityError
 import re
 import jwt
@@ -62,12 +63,30 @@ def _user_to_dict(user: User, include_cards: bool = False):
     return data
 
 def _card_to_public_dict(card: BillingInfo):
+    """
+    Convert BillingInfo to public dict, decrypting sensitive fields.
+    Security: Only last 4 digits of card number exposed; full number and expiry are encrypted in DB.
+    """
+    try:
+        encryptor = CardEncryption()
+        # Decrypt card number and expiry if they are encrypted
+        card_number = encryptor.decrypt(card.card_number) if card.card_number else ""
+        card_last4 = card_number[-4:] if card_number else "0000"
+        # Decrypt cardholder name and expiry
+        cardholder_name = encryptor.decrypt(card.cardholder_name) if card.cardholder_name else ""
+        card_exp = encryptor.decrypt(card.card_exp) if card.card_exp else ""
+    except Exception as e:
+        current_app.logger.warning(f"Failed to decrypt card data: {e}")
+        card_last4 = "XXXX"
+        cardholder_name = "••••••••"
+        card_exp = "••/••"
+    
     return {
         "billing_info_id": str(card.billing_info_id),
         "card_type": card.card_type,
-        "cardholder_name": card.cardholder_name,
-        "card_last4": card.card_number[-4:],
-        "card_exp": card.card_exp,
+        "cardholder_name": cardholder_name,  # Decrypted
+        "card_last4": card_last4,
+        "card_exp": card_exp,  # Decrypted
         "billing_address": {
             "street": card.billing_street,
             "city": card.billing_city,
@@ -176,6 +195,10 @@ def get_user_cards():
     return jsonify([_card_to_public_dict(c) for c in cards]), 200
 
 def add_user_card():
+    """
+    Create a new billing card for user.
+    Security: Card number, expiry, and cardholder name are encrypted before storage.
+    """
     user, error = get_user_from_token()
     if error:
         return error
@@ -202,31 +225,45 @@ def add_user_card():
     if card_type not in ("debit", "credit"):
         return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_type must be 'debit' or 'credit'"}}), 400
 
+    # Validate card number format (16 digits)
     num = re.sub(r"\D", "", str(data["card_number"]))
     if not CARD16_RE.match(num):
         return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_number must be 16 digits"}}), 400
 
+    # Validate expiry format (MM/YY)
     exp = str(data["card_exp"])
     if not MMYY_RE.match(exp):
         return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_exp must be MM/YY"}}), 400
 
+    # Validate state (2-letter US code)
     state = str(data["billing_state"]).upper()
     if not STATE_RE.match(state):
         return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_state must be 2-letter US code"}}), 400
 
+    # Validate ZIP code (5 digits)
     zip5 = str(data["billing_zip_code"])
     if not ZIP5_RE.match(zip5):
         return jsonify({"error": {"code": "BAD_REQUEST", "message": "billing_zip_code must be 5 digits"}}), 400
 
+    # Encrypt sensitive fields
+    try:
+        encryptor = CardEncryption()
+        encrypted_card_number = encryptor.encrypt(num)
+        encrypted_card_exp = encryptor.encrypt(exp)
+        encrypted_cardholder_name = encryptor.encrypt(str(data["cardholder_name"]))
+    except Exception as e:
+        current_app.logger.error(f"Encryption failed: {e}")
+        return jsonify({"error": {"code": "INTERNAL_SERVER_ERROR", "message": "Failed to process card"}}), 500
+
     card = BillingInfo(
         user_id=user.user_id,
-        first_name=user.first_name,    # keep backfill fields per your model
+        first_name=user.first_name,
         last_name=user.last_name,
-        cardholder_name=str(data["cardholder_name"]),
+        cardholder_name=encrypted_cardholder_name,  # Encrypted
         billing_city=str(data["billing_city"]),
         card_type=card_type,
-        card_number=num,
-        card_exp=exp,
+        card_number=encrypted_card_number,  # Encrypted
+        card_exp=encrypted_card_exp,  # Encrypted
         billing_street=str(data["billing_street"]),
         billing_state=state,
         billing_zip_code=zip5,
@@ -242,6 +279,10 @@ def add_user_card():
     return jsonify(_card_to_public_dict(card)), 201
 
 def update_user_card(card_id):
+    """
+    Update card details (expiry, cardholder name, address).
+    Security: Card number cannot be updated via PATCH. Sensitive fields are encrypted.
+    """
     user, error = get_user_from_token()
     if error:
         return error
@@ -252,14 +293,26 @@ def update_user_card(card_id):
 
     data = request.get_json(silent=True) or {}
 
+    # Encrypt cardholder name if updating
     if "cardholder_name" in data and data["cardholder_name"]:
-        card.cardholder_name = str(data["cardholder_name"])
+        try:
+            encryptor = CardEncryption()
+            card.cardholder_name = encryptor.encrypt(str(data["cardholder_name"]))
+        except Exception as e:
+            current_app.logger.error(f"Encryption failed: {e}")
+            return jsonify({"error": {"code": "INTERNAL_SERVER_ERROR", "message": "Failed to update card"}}), 500
 
+    # Encrypt expiry if updating
     if "card_exp" in data and data["card_exp"]:
         exp = str(data["card_exp"])
         if not MMYY_RE.match(exp):
             return jsonify({"error": {"code": "BAD_REQUEST", "message": "card_exp must be MM/YY"}}), 400
-        card.card_exp = exp
+        try:
+            encryptor = CardEncryption()
+            card.card_exp = encryptor.encrypt(exp)
+        except Exception as e:
+            current_app.logger.error(f"Encryption failed: {e}")
+            return jsonify({"error": {"code": "INTERNAL_SERVER_ERROR", "message": "Failed to update card"}}), 500
 
     # address fields
     addr_map = {
