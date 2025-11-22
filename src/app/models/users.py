@@ -23,7 +23,6 @@ class User(db.Model):
 
     is_admin = db.Column(db.Boolean, default=False)
     is_email_list = db.Column(db.Boolean, default=True)
-    is_verified = db.Column(db.Boolean, default=False)
 
     home_street  = db.Column(db.Text)
     home_city    = db.Column(db.Text)

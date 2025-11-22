@@ -18,16 +18,16 @@ class BillingInfo(db.Model):
     last_name  = db.Column(db.String(255), nullable=False)
 
     # NEW per diagram
-    cardholder_name = db.Column(db.String(255), nullable=False)
+
     billing_city    = db.Column(db.String(255), nullable=False)
 
     card_type = db.Column(Enum("debit", "credit", name="card_type_enum", create_type=False),
                           nullable=False)
 
     # Encrypted fields: Fernet encryption produces ~88+ char Base64 strings
-    card_number = db.Column(db.String(255), nullable=False)  # Was String(16), now encrypted
-    card_exp    = db.Column(db.String(255), nullable=False)  # Was String(5), now encrypted
-    cardholder_name = db.Column(db.String(255), nullable=False)  # Encryption-safe size
+    card_number = db.Column(db.String(255), nullable=False)
+    card_exp    = db.Column(db.String(255), nullable=False) 
+    cardholder_name = db.Column(db.String(255), nullable=False)
 
     billing_street   = db.Column(db.String(255), nullable=False)
     billing_state    = db.Column(db.String(2),   nullable=False)
