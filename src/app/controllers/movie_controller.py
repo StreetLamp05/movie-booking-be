@@ -182,3 +182,80 @@ def create_movie():
     db.session.add(movie)
     db.session.commit()
     return jsonify(_movie_to_dict(movie)), 201
+
+
+def update_movie(movie_id):
+    """
+    PUT /api/v1/movies/<movie_id>
+    Body: same as create_movie
+    """
+    movie = Movie.query.get(movie_id)
+    if not movie:
+        return _bad_request("Movie not found")
+    
+    data = request.get_json(silent=True) or {}
+    
+    # Update basic fields
+    for f in MOVIE_FIELDS:
+        if f in data:
+            setattr(movie, f, data.get(f))
+    
+    # Handle categories update
+    if "categories" in data:
+        categories = []
+        cat_names = data.get("categories") or []
+        if not isinstance(cat_names, list):
+            return _bad_request("`categories` must be a list of names if provided.")
+        
+        for name in cat_names:
+            if not isinstance(name, str) or not name.strip():
+                return _bad_request("Every category name must be a non-empty string.")
+            name = name.strip()
+            cat = Category.query.filter_by(name=name).first()
+            if not cat:
+                cat = Category(name=name)
+                db.session.add(cat)
+            categories.append(cat)
+        
+        # Ensure uniqueness of categories
+        if categories:
+            seen = {}
+            unique = []
+            for c in categories:
+                if c.name not in seen:
+                    seen[c.name] = True
+                    unique.append(c)
+            movie.categories = unique
+        else:
+            movie.categories = []
+    
+    # Handle categories_ids update
+    if "categories_ids" in data:
+        cat_ids = data.get("categories_ids") or []
+        if cat_ids:
+            if not isinstance(cat_ids, list):
+                return _bad_request("`categories_ids` must be a list of integers if provided.")
+            by_id = Category.query.filter(Category.category_id.in_(cat_ids)).all()
+            found_ids = {c.category_id for c in by_id}
+            missing = [cid for cid in cat_ids if cid not in found_ids]
+            if missing:
+                return _bad_request("Some category ids do not exist.", {"missing_ids": missing})
+            movie.categories = by_id
+        else:
+            movie.categories = []
+    
+    db.session.commit()
+    return jsonify(_movie_to_dict(movie)), 200
+
+
+def delete_movie(movie_id):
+    """
+    DELETE /api/v1/movies/<movie_id>
+    """
+    movie = Movie.query.get(movie_id)
+    if not movie:
+        return _bad_request("Movie not found")
+    
+    db.session.delete(movie)
+    db.session.commit()
+    return jsonify({"message": "Movie deleted successfully"}), 200
