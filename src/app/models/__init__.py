@@ -11,3 +11,4 @@ from .seats import Seat
 from .bookings import Booking
 from .seat_holds import SeatHold
 from .tickets import Ticket
+from .promotions import Promotion
