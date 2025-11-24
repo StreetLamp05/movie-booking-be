@@ -35,6 +35,12 @@ PASSWORD_CHANGED_EMAIL_TEMPLATE = """
 <p>If it was you, no action is needed.</p>
 """
 
+PROMO_TEMPLATE = """
+<h1>Exclusive Promotion Just for You!</h1>
+<p>{{ content }}</p>
+<p>Hurry, this offer is valid for a limited time only!</p>
+"""
+
 def send_verification_email(user_email: str, code: str):
     """
     Send verification email to the user with a 6-digit code
@@ -84,6 +90,28 @@ def send_password_changed_email(user_email: str, time_str: str, ip: str, ua: str
         recipients=[user_email],
         html=render_template_string(
             PASSWORD_CHANGED_EMAIL_TEMPLATE,
+            email_local=email_local,
+            timestamp=time_str,
+            ip_address=ip,
+            user_agent=ua
+        )
+    )
+    mail.send(msg)
+
+
+def send_promotional_email(user_email: str, time_str: str):
+    """
+    Send promotional email to the user
+    """
+
+    # Extract local part of email (before @) for greeting
+    email_local = user_email.split('@')[0] if '@' in user_email else user_email
+    
+    msg = Message(
+        'New Promotion Just for You!',
+        recipients=[user_email],
+        html=render_template_string(
+            PROMO_TEMPLATE,
             email_local=email_local,
             timestamp=time_str,
             ip_address=ip,

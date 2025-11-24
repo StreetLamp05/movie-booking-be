@@ -1,0 +1,17 @@
+from flask import Blueprint
+from ..middleware.auth import require_admin
+from ..controllers.promotions_controller import create_promotion, send_promotion_email
+
+bp = Blueprint("promotions_routes", __name__, url_prefix="/promo")
+
+# POST /api/v1/promo/create
+@bp.post("/create")
+@require_admin
+def create_promotion():
+    return create_promotion()
+
+# PATCH /api/v1/admin/users/<user_id>
+@bp.patch("/email/<promotion_id>>")
+@require_admin
+def send_promotion_email(promotion_id):
+    return send_promotion_email(promotion_id)

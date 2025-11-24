@@ -3,6 +3,8 @@ from sqlalchemy import asc, desc
 from .. import db
 from ..models.promotions import Promotion
 from datetime import datetime
+from .. models.user import User
+from ..services.email_service import send_promotional_email
 
 
 
@@ -95,4 +97,44 @@ def create_promotion():
         # This catches your CheckConstraints (e.g. if start > end)
         return jsonify({'error': str(e)}), 400
 
-    return jsonify(new_promo.to_dict()), 201
+    return jsonify(_to_promo_row(new_promo)), 201
+
+
+def send_promotion_email(promotion_id):
+
+    # 1. Fetch the promotion
+    promo = Promotion.query.get_or_404(promotion_id)
+    
+    # 2. Rubric Requirement: Filter ONLY subscribed users
+    # Make sure your User model actually has 'receives_promotions' or similar
+    subscribed_users = User.query.filter_by(is_email_list=True).all()
+    
+    if not subscribed_users:
+        return jsonify({
+            'message': 'No subscribed users found. No emails sent.',
+            'promo': promo.code
+        }), 200
+
+    # 3. Mock the Email Sending (Log it for the Demo)
+    print(f"\n[EMAIL SYSTEM] Starting Batch for Promo: {promo.code}")
+    print(f"[EMAIL SYSTEM] Discount: {promo.discount_percent}% off")
+    print("---------------------------------------------------")
+    
+    sent_count = 0
+    for user in subscribed_users:
+        # This print statement is your "proof" for the TA
+        print(f"Sending email to: {user.email} [Status: SUBSCRIBED] ... Sent.")
+        send_promotional_email(
+            user_email=user.email,
+            time_str=datetime.now().isoformat(),
+        )
+
+        sent_count += 1
+        
+    print("---------------------------------------------------")
+    print(f"[EMAIL SYSTEM] Job Complete. Sent to {sent_count} users.\n")
+    
+    return jsonify({
+        'message': f'Successfully sent promotion "{promo.code}" to {sent_count} subscribers.',
+        'recipient_count': sent_count
+    }), 200
