@@ -1,6 +1,6 @@
 from flask import Blueprint
 from ..middleware.auth import require_admin
-from ..controllers.admin_controller import list_users, update_user_admin
+from ..controllers.admin_controller import list_users, create_user, update_user_admin, get_user_cards, delete_user_card
 
 bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 
@@ -10,8 +10,26 @@ bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 def _list_users(admin_user):
     return list_users(admin_user)
 
+# POST /api/v1/admin/users
+@bp.post("/users")
+@require_admin
+def _create_user(admin_user):
+    return create_user(admin_user)
+
 # PATCH /api/v1/admin/users/<user_id>
 @bp.patch("/users/<user_id>")
 @require_admin
 def _update_user_admin(admin_user, user_id):
     return update_user_admin(admin_user, user_id)
+
+# GET /api/v1/admin/users/<user_id>/cards
+@bp.get("/users/<user_id>/cards")
+@require_admin
+def _get_user_cards(admin_user, user_id):
+    return get_user_cards(admin_user, user_id)
+
+# DELETE /api/v1/admin/users/<user_id>/cards/<card_id>
+@bp.delete("/users/<user_id>/cards/<card_id>")
+@require_admin
+def _delete_user_card(admin_user, user_id, card_id):
+    return delete_user_card(admin_user, user_id, card_id)
