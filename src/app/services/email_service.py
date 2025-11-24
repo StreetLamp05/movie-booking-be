@@ -35,6 +35,27 @@ PASSWORD_CHANGED_EMAIL_TEMPLATE = """
 <p>If it was you, no action is needed.</p>
 """
 
+PROMOTION_EMAIL_TEMPLATE = """
+<h1>Exclusive Offer Just For You!</h1>
+<p>We have an exclusive promotion for you:</p>
+
+<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+    <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">USE CODE</p>
+    <h2 style="margin: 0; font-size: 36px; letter-spacing: 4px; color: #667eea; font-weight: bold;">{{ promo_code }}</h2>
+    <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">{{ discount_percent }}% OFF</p>
+</div>
+
+<p><strong>Offer Details:</strong></p>
+<ul>
+    <li>Discount: {{ discount_percent }}% off</li>
+    <li>Valid from: {{ start_date }}</li>
+    <li>Valid until: {{ end_date }}</li>
+    {% if description %}<li>{{ description }}</li>{% endif %}
+</ul>
+
+<p>Don't miss this opportunity! Book your movie tickets today with this exclusive code.</p>
+"""
+
 def send_verification_email(user_email: str, code: str):
     """
     Send verification email to the user with a 6-digit code
@@ -91,3 +112,32 @@ def send_password_changed_email(user_email: str, time_str: str, ip: str, ua: str
         )
     )
     mail.send(msg)
+
+def send_promotion_email(user_email: str, promo_code: str, discount_percent: float, start_date: str, end_date: str, description: str = None):
+    """
+    Send promotion email to user with promo code
+    """
+    msg = Message(
+        f'Exclusive Promotion: {promo_code}',
+        recipients=[user_email],
+        html=render_template_string(
+            PROMOTION_EMAIL_TEMPLATE,
+            promo_code=promo_code,
+            discount_percent=discount_percent,
+            start_date=start_date,
+            end_date=end_date,
+            description=description or ""
+        )
+    )
+    mail.send(msg)
+
+def send_promotion_emails_bulk(user_emails: list, promo_code: str, discount_percent: float, start_date: str, end_date: str, description: str = None):
+    """
+    Send promotion email to multiple users
+    """
+    for email in user_emails:
+        try:
+            send_promotion_email(email, promo_code, discount_percent, start_date, end_date, description)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send promotion email to {email}: {e}")
+            continue
