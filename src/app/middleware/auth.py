@@ -1,7 +1,7 @@
 """Auth utilities: extract JWT from HttpOnly cookie (preferred) or Bearer header,
 and decorators for auth/verified/admin guards."""
 from functools import wraps
-from flask import jsonify, request, current_app
+from flask import jsonify, request, current_app, g
 import jwt
 from ..models.users import User
 
@@ -29,20 +29,27 @@ def _decode_user(token: str):
 
 
 def require_auth(f):
-    """Require valid JWT (cookie/Bearer)."""
-
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Skip auth check for OPTIONS requests (CORS preflight)
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         token = _extract_token()
         if not token:
             return jsonify({"error": "Not authenticated"}), 401
+
         user = _decode_user(token)
         if not user:
             return jsonify({"error": "Invalid or expired token"}), 401
-        return f(user, *args, **kwargs)
+
+        # store user on request context
+        g.current_user = user
+
+        # call the route without injecting user as arg
+        return f(*args, **kwargs)
 
     return decorated
-
 
 def require_verified_email(f):
     """Require valid JWT + verified email."""
