@@ -9,7 +9,7 @@ def init_app(app):
     from .user_routes import bp as user_bp
     from .auth_routes import auth_bp
     from .admin_routes import bp as admin_bp
-
+    from .booking_routes import bp as booking_bp
 
     bp.register_blueprint(movie_bp)
     bp.register_blueprint(auditorium_bp)
@@ -17,7 +17,7 @@ def init_app(app):
     bp.register_blueprint(user_bp)
     bp.register_blueprint(auth_bp, url_prefix='/auth')
     bp.register_blueprint(admin_bp, url_prefix='/admin')
-
+    bp.register_blueprint(booking_bp)
 
     app.register_blueprint(bp, url_prefix="/api/v1")
 
