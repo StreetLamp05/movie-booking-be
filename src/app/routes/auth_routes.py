@@ -1,7 +1,9 @@
 from flask import Blueprint
 from ..controllers.auth_controller import AuthController
 
-auth_bp = Blueprint("auth", __name__)
+auth_bp = Blueprint("auth_routes", __name__, url_prefix="/auth")
+
+
 
 # /api/v1/auth/*
 @auth_bp.route("/signup", methods=["POST"])
@@ -41,3 +43,5 @@ def reset_password():
 @auth_bp.route("/change-password", methods=["POST"])
 def change_password():
     return AuthController.change_password()
+
+bp = auth_bp

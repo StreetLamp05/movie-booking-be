@@ -1,18 +1,35 @@
 from flask import Blueprint
-from ..controllers.auditorium_controller import (
-    create_auditorium,
-    get_auditoriums,
-    get_auditorium,
-)
+from ..controllers import auditorium_controller
+from ..middleware.auth import require_auth  # or require_admin if you have it
+
+bp = Blueprint("auditorium_routes", __name__, url_prefix="/auditoriums")
 
 
-bp = Blueprint("auditorium_routes", __name__, url_prefix="/auditorium")
+# CREATE auditorium (admin-only)
+@bp.post("")
+def create_auditorium_route():
+    return auditorium_controller.create_auditorium()
 
-# POST /api/v1/auditorium
-bp.post("")(create_auditorium)
 
-# GET /api/v1/auditorium
-bp.get("")(get_auditoriums)
+# LIST auditoriums
+@bp.get("")
+def get_auditoriums_route():
+    return auditorium_controller.get_auditoriums()
 
-# GET /api/v1/auditorium/<auditorium_id>
-bp.get("/<int:auditorium_id>")(get_auditorium)
+
+# GET one auditorium (optionally include seats via ?include_seats=1)
+@bp.get("/<int:auditorium_id>")
+def get_auditorium_route(auditorium_id):
+    return auditorium_controller.get_auditorium(auditorium_id)
+
+
+# UPDATE auditorium (name only; admin-only)
+@bp.patch("/<int:auditorium_id>")
+def update_auditorium_route(auditorium_id):
+    return auditorium_controller.update_auditorium(auditorium_id)
+
+
+# DELETE auditorium (admin-only)
+@bp.delete("/<int:auditorium_id>")
+def delete_auditorium_route(auditorium_id):
+    return auditorium_controller.delete_auditorium(auditorium_id)
