@@ -3,8 +3,10 @@ from sqlalchemy import asc, desc
 from .. import db
 from ..models.promotions import Promotion
 from datetime import datetime
-from .. models.user import User
+from .. models.users import User
 from ..services.email_service import send_promotional_email
+from ..models.promotions import Promotions
+from datetime import timezone
 
 
 
@@ -16,7 +18,7 @@ def _to_promo_row(p: Promotions):
         "discount_percent": float(p.discount_percent),
         "starts_at": p.starts_at.isoformat() if p.starts_at else None,
         "ends_at": p.ends_at.isoformat() if p.ends_at else None,
-        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
         "is_active": p.is_active,
         "max_uses": p.max_uses,
         "per_user_limit": p.per_user_limit,
@@ -138,3 +140,15 @@ def send_promotion_email(promotion_id):
         'message': f'Successfully sent promotion "{promo.code}" to {sent_count} subscribers.',
         'recipient_count': sent_count
     }), 200
+
+def get_active_promotions():
+    promos = Promotion.query.filter_by(is_active=True).order_by(asc(Promotion.starts_at)).all()
+    promo_list = [_to_promo_row(p) for p in promos]
+    return jsonify(promo_list), 200
+
+def get_promotion_by_code(code):
+    promo = Promotion.query.filter_by(code=code, is_active=True).first()
+    if not promo:
+        return jsonify({'error': 'Promotion not found or inactive'}), 404
+    return jsonify(_to_promo_row(promo)), 200
+
