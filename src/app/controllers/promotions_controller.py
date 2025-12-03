@@ -128,15 +128,10 @@ class PromotionController:
                 'promo': promo.code
             }), 200
 
-        # 3. Mock the Email Sending (Log it for the Demo)
-        print(f"\n[EMAIL SYSTEM] Starting Batch for Promo: {promo.code}")
-        print(f"[EMAIL SYSTEM] Discount: {promo.discount_percent}% off")
-        print("---------------------------------------------------")
         
         sent_count = 0
         for user in subscribed_users:
             # This print statement is your "proof" for the TA
-            print(f"Sending email to: {user.email} [Status: SUBSCRIBED] ... Sent.")
             start_date= promo.starts_at.strftime("%b %d") # e.g., "Dec 01"
             end_date=promo.ends_at.strftime("%b %d")      # e.g., "Dec 31"
             send_promotional_email(
@@ -149,8 +144,6 @@ class PromotionController:
 
             sent_count += 1
             
-        print("---------------------------------------------------")
-        print(f"[EMAIL SYSTEM] Job Complete. Sent to {sent_count} users.\n")
         
         return jsonify({
             'message': f'Successfully sent promotion "{promo.code}" to {sent_count} subscribers.',
@@ -208,8 +201,7 @@ class PromotionController:
         # 5. Execute and Return
         promos = query.all()
         promo_list = [_to_promo_row(p) for p in promos]
-        print(jsonify(promo_list))
-        return jsonify(promo_list), 200
+        return jsonify({"data": promo_list}), 200
 
     def get_promotion_by_code(code, admin_user):
         promo = Promotion.query.filter_by(code=code, is_active=True).first()

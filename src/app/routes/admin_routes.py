@@ -46,7 +46,7 @@ def get_promotion_by_code(code, admin_user):
 @bp.patch("/promotions/<promotion_id>")
 @require_admin
 def update_promotion(admin_user, promotion_id):
-    return PromotionController.update_promotion(admin_user, promotion_id)
+    return PromotionController.edit_promotion(admin_user, promotion_id)
 
 # DELETE api/v1/admin/promotions/${promotionId}
 @bp.delete("/promotions/<promotion_id>")
