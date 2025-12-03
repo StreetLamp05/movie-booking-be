@@ -22,6 +22,7 @@ def _to_promo_row(p: Promotion):
         "is_active": p.is_active,
         "max_uses": p.max_uses,
         "per_user_limit": p.per_user_limit,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
     }
 
 class PromotionController:
@@ -36,8 +37,9 @@ class PromotionController:
         description = data.get('description')
         max_uses = data.get('max_uses')
         per_user_limit = data.get('per_user_limit')
-
+        is_active = data.get('is_active', True)
         end_date = datetime.fromisoformat(end_str)
+        created_at = datetime.now(timezone.utc)
         try:
            
             start_date = datetime.fromisoformat(start_str)
@@ -87,15 +89,17 @@ class PromotionController:
         
 
             # 6. Save to DB
+            
         new_promo = Promotion(
             code=code,
             description=description,
             discount_percent=discount,
             starts_at=start_date, 
             ends_at=end_date,
-            is_active=True, 
+            is_active=is_active, 
             max_uses=max_uses,
-            per_user_limit=per_user_limit
+            per_user_limit=per_user_limit,
+            created_at=created_at
         )
 
         try:
@@ -157,10 +161,88 @@ class PromotionController:
         promos = Promotion.query.filter_by(is_active=True).order_by(asc(Promotion.starts_at)).all()
         promo_list = [_to_promo_row(p) for p in promos]
         return jsonify(promo_list), 200
+    
+    def get_promotions(admin_user, search_query="", sort_param=""):
+        query = Promotion.query
+
+        # 1. Search Filter
+        if search_query:
+            query = query.filter(
+                Promotion.code.ilike(f"%{search_query}%") | 
+                Promotion.description.ilike(f"%{search_query}%")
+            )
+
+        # 2. Define Sorting Logic
+        # Map the string values from React (SortField) to SQLAlchemy columns
+        field_mapping = {
+            'created_at': Promotion.created_at,
+            'code': Promotion.code,
+            'discount_percent': Promotion.discount_percent
+        }
+        
+        # Default sorting (Newest first)
+        sort_column = Promotion.created_at
+        sort_direction = 'desc'
+
+        # 3. Parse the "field.direction" string
+        if sort_param and '.' in sort_param:
+            try:
+                # React sends "code.asc", so we split by the dot
+                field_name, direction_str = sort_param.split('.', 1)
+                
+                # Get the column, defaulting to created_at if the field name is invalid
+                sort_column = field_mapping.get(field_name, Promotion.created_at)
+                
+                # Capture direction
+                sort_direction = direction_str
+            except ValueError:
+                # Fallback if split fails
+                pass
+
+        # 4. Apply Sort to Query
+        if sort_direction == 'asc':
+            query = query.order_by(asc(sort_column))
+        else:
+            query = query.order_by(desc(sort_column))
+
+        # 5. Execute and Return
+        promos = query.all()
+        promo_list = [_to_promo_row(p) for p in promos]
+        print(jsonify(promo_list))
+        return jsonify(promo_list), 200
 
     def get_promotion_by_code(code, admin_user):
         promo = Promotion.query.filter_by(code=code, is_active=True).first()
         if not promo:
             return jsonify({'error': 'Promotion not found or inactive'}), 404
         return jsonify(_to_promo_row(promo)), 200
+    
+    def edit_promotion(admin_user, promotion_id):
+        data = request.get_json()
+        promo = Promotion.query.get_or_404(promotion_id)
+
+        # Update fields if provided
+        for field in ['code', 'description', 'discount_percent', 'starts_at', 'ends_at', 'is_active', 'max_uses', 'per_user_limit']:
+            if field in data:
+                setattr(promo, field, data[field])
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
+
+        return jsonify(_to_promo_row(promo)), 200
+    
+    def delete_promotion(admin_user, promotion_id):
+        promo = Promotion.query.get_or_404(promotion_id)
+
+        try:
+            db.session.delete(promo)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
+
+        return jsonify({'message': 'Promotion deleted successfully'}), 200
 
