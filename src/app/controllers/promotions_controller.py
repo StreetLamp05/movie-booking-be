@@ -132,8 +132,8 @@ class PromotionController:
         sent_count = 0
         for user in subscribed_users:
             # This print statement is your "proof" for the TA
-            start_date= promo.starts_at.strftime("%b %d") # e.g., "Dec 01"
-            end_date=promo.ends_at.strftime("%b %d")      # e.g., "Dec 31"
+            start_date= promo.starts_at.strftime("%b %d, %y") # e.g., "Dec 01"
+            end_date=promo.ends_at.strftime("%b %d, %y")      # e.g., "Dec 31"
             send_promotional_email(
                 user_email=user.email,
                 promo_code=promo.code,
