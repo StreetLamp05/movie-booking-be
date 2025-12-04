@@ -542,8 +542,11 @@ def checkout_booking(booking_id):
     if promo_code:
         promotion = Promotion.query.filter_by(code=promo_code, is_active=True).first()
         if promotion:
-            discount_cents = int(new_total * float(promotion.discount_percent) / 100)
-            booking.total_cents -= discount_cents
+            discount = int(new_total * float(promotion.discount_percent) / 100)
+            booking.total_cents -= discount
+    else:
+        discount = 0
+        promotion = None
 
     # Check active holds for this user
     active_holds = SeatHold.query.filter(
