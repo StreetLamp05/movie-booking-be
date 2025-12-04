@@ -35,56 +35,25 @@ PASSWORD_CHANGED_EMAIL_TEMPLATE = """
 <p>If it was you, no action is needed.</p>
 """
 
-PROMO_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
-  .container { width: 100%; padding: 20px 0; }
-  .card { background-color: #ffffff; max-width: 600px; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden; }
-  .header { background-color: #b91c1c; padding: 20px; text-align: center; }
-  .header h1 { color: #ffffff; margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
-  .content { padding: 30px 20px; text-align: center; color: #333333; }
-  .discount-text { font-size: 48px; font-weight: bold; color: #b91c1c; margin: 10px 0; }
-  .sub-text { font-size: 16px; color: #666666; margin-bottom: 20px; }
-  .coupon-box { background-color: #f8f8f8; border: 2px dashed #b91c1c; padding: 15px; display: inline-block; margin: 20px 0; }
-  .code { font-size: 28px; font-weight: bold; letter-spacing: 2px; color: #333; }
-  .footer { background-color: #eeeeee; padding: 15px; text-align: center; font-size: 12px; color: #888888; }
-</style>
-</head>
-<body>
+PROMOTION_EMAIL_TEMPLATE = """
+<h1>Exclusive Offer Just For You!</h1>
+<p>We have an exclusive promotion for you:</p>
 
-<div class="container">
-  <div class="card">
-    <div class="header">
-      <h1>Movie Night Special!</h1>
-    </div>
-    
-    <div class="content">
-      <p class="sub-text">We noticed you love movies as much as we do. Here is an exclusive treat for your next booking.</p>
-      
-      <div class="discount-text">{{ discount }}% OFF</div>
-      <p>Use this code at checkout:</p>
-      
-      <div class="coupon-box">
-        <span class="code">{{ promo_code }}</span>
-      </div>
-      
-      <p style="font-size: 14px; color: #555;">
-        Valid from <strong>{{ start_date }}</strong> to <strong>{{ end_date }}</strong>
-      </p>
-    </div>
-
-    <div class="footer">
-      <p>Hurry! This offer is valid for a limited time only.</p>
-      <p>&copy; 2025 Cinema E-Booking System</p>
-    </div>
-  </div>
+<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+    <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">USE CODE</p>
+    <h2 style="margin: 0; font-size: 36px; letter-spacing: 4px; color: #667eea; font-weight: bold;">{{ promo_code }}</h2>
+    <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">{{ discount_percent }}% OFF</p>
 </div>
 
-</body>
-</html>
+<p><strong>Offer Details:</strong></p>
+<ul>
+    <li>Discount: {{ discount_percent }}% off</li>
+    <li>Valid from: {{ start_date }}</li>
+    <li>Valid until: {{ end_date }}</li>
+    {% if description %}<li>{{ description }}</li>{% endif %}
+</ul>
+
+<p>Don't miss this opportunity! Book your movie tickets today with this exclusive code.</p>
 """
 
 def send_verification_email(user_email: str, code: str):
@@ -144,23 +113,31 @@ def send_password_changed_email(user_email: str, time_str: str, ip: str, ua: str
     )
     mail.send(msg)
 
-
-def send_promotional_email(user_email: str, discount: float, 
-                           promo_code: str, start_date: str, end_date: str):
+def send_promotion_email(user_email: str, promo_code: str, discount_percent: float, start_date: str, end_date: str, description: str = None):
     """
-    Send promotional email to the user
+    Send promotion email to user with promo code
     """
-
-    
     msg = Message(
-        'New Promotion Just for You!',
+        f'Exclusive Promotion: {promo_code}',
         recipients=[user_email],
         html=render_template_string(
-            PROMO_TEMPLATE,
-            discount=int(discount), # e.g., 20
-            promo_code=promo_code,                # e.g., "SUMMER25"
+            PROMOTION_EMAIL_TEMPLATE,
+            promo_code=promo_code,
+            discount_percent=discount_percent,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            description=description or ""
         )
     )
     mail.send(msg)
+
+def send_promotion_emails_bulk(user_emails: list, promo_code: str, discount_percent: float, start_date: str, end_date: str, description: str = None):
+    """
+    Send promotion email to multiple users
+    """
+    for email in user_emails:
+        try:
+            send_promotion_email(email, promo_code, discount_percent, start_date, end_date, description)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send promotion email to {email}: {e}")
+            continue

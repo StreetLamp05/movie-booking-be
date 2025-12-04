@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from ..middleware.auth import require_admin
-from ..controllers.admin_controller import list_users, update_user_admin
-from ..controllers.promotions_controller import PromotionController
+from ..controllers.admin_controller import list_users, create_user, update_user_admin, get_user_cards, delete_user_card
+from ..controllers.promotions_controller import list_promotions, create_promotion, update_promotion, delete_promotion, send_promotion_emails
 
 bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 
@@ -11,45 +11,57 @@ bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 def _list_users(admin_user):
     return list_users(admin_user)
 
+# POST /api/v1/admin/users
+@bp.post("/users")
+@require_admin
+def _create_user(admin_user):
+    return create_user(admin_user)
+
 # PATCH /api/v1/admin/users/<user_id>
 @bp.patch("/users/<user_id>")
 @require_admin
 def _update_user_admin(admin_user, user_id):
     return update_user_admin(admin_user, user_id)
 
+# GET /api/v1/admin/users/<user_id>/cards
+@bp.get("/users/<user_id>/cards")
+@require_admin
+def _get_user_cards(admin_user, user_id):
+    return get_user_cards(admin_user, user_id)
+
+# DELETE /api/v1/admin/users/<user_id>/cards/<card_id>
+@bp.delete("/users/<user_id>/cards/<card_id>")
+@require_admin
+def _delete_user_card(admin_user, user_id, card_id):
+    return delete_user_card(admin_user, user_id, card_id)
+
+
+# GET /api/v1/admin/promotions
+@bp.get("/promotions")
+@require_admin
+def _list_promotions(admin_user):
+    return list_promotions(admin_user)
+
 # POST /api/v1/admin/promotions
 @bp.post("/promotions")
 @require_admin
-def create_promotion(admin_user):
-    return PromotionController.create_promotion(admin_user)
+def _create_promotion(admin_user):
+    return create_promotion(admin_user)
+
+# PATCH /api/v1/admin/promotions/<promotion_id>
+@bp.patch("/promotions/<promotion_id>")
+@require_admin
+def _update_promotion(admin_user, promotion_id):
+    return update_promotion(admin_user, promotion_id)
+
+# DELETE /api/v1/admin/promotions/<promotion_id>
+@bp.delete("/promotions/<promotion_id>")
+@require_admin
+def _delete_promotion(admin_user, promotion_id):
+    return delete_promotion(admin_user, promotion_id)
 
 # POST /api/v1/admin/promotions/<promotion_id>/send-email
 @bp.post("/promotions/<promotion_id>/send-email")
 @require_admin
-def send_promotion_email(admin_user, promotion_id):
-    return PromotionController.send_promotion_email(admin_user, promotion_id)
-
-# GET /api/v1/admin/promotions?query=...&sort=..
-@bp.get("/promotions")
-@require_admin
-def get_active_promotions(admin_user):
-    search_query = request.args.get("query", "")
-    sort_order = request.args.get("sort", "")
-    return PromotionController.get_promotions(admin_user, search_query, sort_order)
-
-# GET /api/v1/admin/promotions/<code>
-@bp.get("/promotions/<code>")
-def get_promotion_by_code(code, admin_user):
-    return PromotionController.get_promotion_by_code(code, admin_user)
-
-# PATCH api/v1/admin/promotions/${promotionId}
-@bp.patch("/promotions/<promotion_id>")
-@require_admin
-def update_promotion(admin_user, promotion_id):
-    return PromotionController.edit_promotion(admin_user, promotion_id)
-
-# DELETE api/v1/admin/promotions/${promotionId}
-@bp.delete("/promotions/<promotion_id>")
-@require_admin
-def delete_promotion(admin_user, promotion_id):
-    return PromotionController.delete_promotion(admin_user, promotion_id)
+def _send_promotion_emails(admin_user, promotion_id):
+    return send_promotion_emails(admin_user, promotion_id)
