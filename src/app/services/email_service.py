@@ -56,6 +56,42 @@ PROMOTION_EMAIL_TEMPLATE = """
 <p>Don't miss this opportunity! Book your movie tickets today with this exclusive code.</p>
 """
 
+BOOKING_RECEIPT_EMAIL_TEMPLATE = """
+<h1>Your Booking Confirmation</h1>
+<p>Hi {{ user_name }},</p>
+<p>Thank you for booking your movie tickets! Here's your confirmation details:</p>
+
+<div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h2 style="margin-top: 0;">{{ movie_title }}</h2>
+    <p><strong>Showtime:</strong> {{ showtime_date }} at {{ showtime_time }}</p>
+    <p><strong>Theater:</strong> {{ auditorium_name }}</p>
+    <p><strong>Seats:</strong> {{ seats }}</p>
+    <p><strong>Number of Tickets:</strong> {{ ticket_count }}</p>
+</div>
+
+<div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3>Order Summary:</h3>
+    <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+        <span>Subtotal:</span>
+        <strong>{{ subtotal }}</strong>
+    </div>
+    {% if discount %}
+    <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #22c553;">
+        <span>Discount ({{ discount_percent }}%):</span>
+        <strong>-{{ discount }}</strong>
+    </div>
+    {% endif %}
+    <div style="display: flex; justify-content: space-between; margin: 20px 0; font-size: 18px; border-top: 1px solid #ddd; padding-top: 10px;">
+        <span><strong>Total:</strong></span>
+        <strong>{{ total }}</strong>
+    </div>
+</div>
+
+<p><strong>Booking ID:</strong> {{ booking_id }}</p>
+<p>Please arrive 15 minutes before your showtime. Have a great movie experience!</p>
+<p>If you need to cancel or modify your booking, please contact our support team.</p>
+"""
+
 def send_verification_email(user_email: str, code: str):
     """
     Send verification email to the user with a 6-digit code
@@ -141,3 +177,32 @@ def send_promotion_emails_bulk(user_emails: list, promo_code: str, discount_perc
         except Exception as e:
             current_app.logger.error(f"Failed to send promotion email to {email}: {e}")
             continue
+
+def send_booking_receipt(user_email: str, user_name: str, booking_id: str, movie_title: str, 
+                        showtime_date: str, showtime_time: str, auditorium_name: str, 
+                        seats: str, ticket_count: int, subtotal: str, total: str, 
+                        discount: str = None, discount_percent: int = None):
+    """
+    Send booking confirmation receipt email to the user
+    """
+    msg = Message(
+        f'Booking Confirmation - {movie_title}',
+        recipients=[user_email],
+        html=render_template_string(
+            BOOKING_RECEIPT_EMAIL_TEMPLATE,
+            user_name=user_name,
+            booking_id=booking_id,
+            movie_title=movie_title,
+            showtime_date=showtime_date,
+            showtime_time=showtime_time,
+            auditorium_name=auditorium_name,
+            seats=seats,
+            ticket_count=ticket_count,
+            subtotal=subtotal,
+            total=total,
+            discount=discount,
+            discount_percent=discount_percent
+        )
+    )
+    
+    mail.send(msg)
