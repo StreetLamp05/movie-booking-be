@@ -2,6 +2,7 @@ from flask import Blueprint
 
 from ..controllers import showtime_controller
 from ..controllers import booking_controller  # for /<showtime_id>/seats
+from ..controllers.showtime_controller import create_showtime
 from ..middleware.auth import require_auth
 
 bp = Blueprint("showtimes", __name__, url_prefix="/showtimes")
@@ -12,6 +13,9 @@ bp = Blueprint("showtimes", __name__, url_prefix="/showtimes")
 @bp.get("")
 def get_showtimes_route():
     return showtime_controller.get_showtimes()
+
+# POST /api/v1/showtimes
+bp.post("")(create_showtime)
 
 
 # GET /api/v1/showtimes/<showtime_id>/seats

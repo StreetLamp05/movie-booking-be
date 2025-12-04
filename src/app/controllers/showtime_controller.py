@@ -6,6 +6,7 @@ from .. import db
 from ..models.showtimes import Showtime
 from ..models.movie import Movie
 from ..models.auditorium import Auditorium
+from ..models.seats import Seat
 
 # helpers
 def _bad_request(msg, details=None, code=400):
@@ -86,6 +87,21 @@ def create_showtime():
     )
     db.session.add(s)
     try:
+        db.session.flush()  # Get the showtime_id without committing yet
+        
+        # Generate seats for this showtime based on auditorium dimensions
+        auditorium = Auditorium.query.filter_by(auditorium_id=auditorium_id).first()
+        for row_idx in range(auditorium.row_count):
+            row_label = chr(ord('A') + row_idx)
+            for col_idx in range(auditorium.col_count):
+                seat_number = col_idx + 1
+                seat = Seat(
+                    auditorium_id=auditorium_id,
+                    row_label=row_label,
+                    seat_number=seat_number
+                )
+                db.session.add(seat)
+        
         db.session.commit()
     except IntegrityError as e:
         db.session.rollback()

@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint, request
 from ..middleware.auth import require_admin
 from ..controllers.admin_controller import list_users, create_user, update_user_admin, get_user_cards, delete_user_card
 from ..controllers.promotions_controller import list_promotions, create_promotion, update_promotion, delete_promotion, send_promotion_emails
