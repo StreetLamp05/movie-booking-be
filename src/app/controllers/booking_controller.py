@@ -9,7 +9,8 @@ from ..models.seat_holds import SeatHold
 from ..models.tickets import Ticket
 from ..models.bookings import Booking
 from ..models.auditorium import Auditorium
-
+from ..models.promotions import Promotion
+from ..models.movie import Movie
 
 # responses
 def _bad_request(msg, details=None, code=400):
@@ -383,6 +384,7 @@ def checkout_booking(booking_id):
     data = request.get_json(silent=True) or {}
     seat_ids = data.get("seat_ids")
     ticket_types = data.get("ticket_types", {})
+    promo_code = data.get("promo_code")
 
     if not isinstance(seat_ids, list) or not seat_ids:
         return _bad_request("`seat_ids` must be a non-empty list of integers.")
@@ -426,21 +428,27 @@ def checkout_booking(booking_id):
             )
         counts_from_payload[ttype] += 1
 
-    recalculated_total = (
+    new_total = (
         counts_from_payload["adult"] * showtime.adult_price_cents
         + counts_from_payload["child"] * showtime.child_price_cents
         + counts_from_payload["senior"] * showtime.senior_price_cents
     )
 
-    if recalculated_total != booking.total_cents:
+    if new_total != booking.total_cents:
         return _bad_request(
             "Ticket types / quantities do not match the original booking total.",
             {
                 "original_total_cents": booking.total_cents,
-                "recalculated_total_cents": recalculated_total,
+                "new_total_cents": new_total,
                 "ticket_counts": counts_from_payload,
             },
         )
+    
+    if promo_code:
+        promotion = Promotion.query.filter_by(code=promo_code, is_active=True).first()
+        if promotion:
+            discount_cents = int(new_total * float(promotion.discount_percent) / 100)
+            booking.total_cents -= discount_cents
 
     # Check active holds for this user
     active_holds = SeatHold.query.filter(
@@ -526,3 +534,38 @@ def checkout_booking(booking_id):
         ),
         200,
     )
+
+# ---------------------------------------------------------------------------
+# Getting past bookings for the current user.
+# ---------------------------------------------------------------------------
+
+def get_user_bookings():
+    user = getattr(g, "current_user", None)
+    if not user:
+        return _bad_request("Unauthorized", code=401)
+    
+    bookings = Booking.query.filter_by(
+        user_id=user.user_id,
+        status="CONFIRMED"  
+    ).order_by(Booking.created_at.desc()).all()
+
+    result = []
+    for booking in bookings:
+        showtime = Showtime.query.filter_by(showtime_id=booking.showtime_id).first()
+        movie = Movie.query.filter_by(movie_id=showtime.movie_id).first() 
+        ticket_count = Ticket.query.filter_by(booking_id=booking.booking_id).count()
+
+        result.append({
+            "booking_id": str(booking.booking_id),
+            "order_date": booking.created_at.isoformat(),
+            "total_cents": booking.total_cents,
+            "ticket_count": ticket_count,
+            "movie": {
+                "title": movie.title,
+                "film_rating_code": movie.film_rating_code,
+            },
+            "showtime": {
+                "starts_at": showtime.starts_at.isoformat(),
+            },
+        })
+    return jsonify({"data": result}), 200

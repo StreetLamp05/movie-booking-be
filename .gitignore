@@ -16,3 +16,4 @@ build/
 db_data/
 *.pid
 
+compose.override.yaml

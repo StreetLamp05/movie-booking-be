@@ -26,7 +26,7 @@ services:
     env_file:
       - .env
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./src:/app/src:rw
       - ./tests:/app/tests:rw
