@@ -11,10 +11,7 @@ from ..models.bookings import Booking
 from ..models.auditorium import Auditorium
 
 
-# ---------------------------------------------------------------------------
-# Helper responses
-# ---------------------------------------------------------------------------
-
+# responses
 def _bad_request(msg, details=None, code=400):
     return (
         jsonify(
@@ -59,10 +56,8 @@ def _conflict(msg, details=None):
     )
 
 
-# ---------------------------------------------------------------------------
-# Seat map for a showtime
-# ---------------------------------------------------------------------------
 
+# Seat map for a showtime
 def get_showtime_seats(showtime_id):
     """
     Return seat layout + status for a specific showtime.
@@ -149,9 +144,6 @@ def get_showtime_seats(showtime_id):
     )
 
 
-# ---------------------------------------------------------------------------
-# Create booking
-# ---------------------------------------------------------------------------
 
 def create_booking():
     """
@@ -207,7 +199,7 @@ def create_booking():
 
     expires_at = now + timedelta(minutes=15)
 
-    # NOTE: do NOT pass ticket_counts / adult_tickets / etc. to Booking
+    # NOTE: do not pass ticket_counts / adult_tickets / etc. to Booking
     booking = Booking(
         user_id=user_id,
         showtime_id=showtime_id,
@@ -232,8 +224,7 @@ def create_booking():
                 "expires_at": booking.expires_at.isoformat()
                 if booking.expires_at
                 else None,
-                # Echo the requested counts so the frontend can keep them
-                "ticket_counts": {
+                    "ticket_counts": {
                     "adult": adult,
                     "child": child,
                     "senior": senior,
@@ -244,9 +235,6 @@ def create_booking():
     )
 
 
-# ---------------------------------------------------------------------------
-# Create seat hold for a showtime
-# ---------------------------------------------------------------------------
 
 def create_seat_hold(showtime_id):
     """
@@ -371,9 +359,6 @@ def create_seat_hold(showtime_id):
     )
 
 
-# ---------------------------------------------------------------------------
-# Checkout booking
-# ---------------------------------------------------------------------------
 
 def checkout_booking(booking_id):
     """
