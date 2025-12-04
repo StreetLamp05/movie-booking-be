@@ -6,6 +6,11 @@ from ..controllers import booking_controller
 bp = Blueprint("bookings", __name__, url_prefix="/bookings")
 
 
+@bp.get("/saved-cards")
+@require_auth
+def get_saved_cards_route():
+    return booking_controller.get_saved_cards()
+
 @bp.post("")
 @require_auth
 def create_booking_route():

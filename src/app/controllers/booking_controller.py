@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import request, jsonify, g
+from flask import request, jsonify, g, current_app
 
 from .. import db
 from ..models.showtimes import Showtime
@@ -11,6 +11,9 @@ from ..models.bookings import Booking
 from ..models.auditorium import Auditorium
 from ..models.promotions import Promotion
 from ..models.movie import Movie
+from ..models.billing_info import BillingInfo
+from ..services.encryption import CardEncryption
+from ..services.email_service import send_booking_receipt
 
 # responses
 def _bad_request(msg, details=None, code=400):
@@ -55,6 +58,57 @@ def _conflict(msg, details=None):
         ),
         409,
     )
+
+
+def _validate_card_payment(payment_data):
+    """
+    Validate card payment data structure and required fields.
+    Returns (is_valid, error_message).
+    """
+    if not payment_data:
+        return False, "Payment data is required"
+    
+    required_fields = [
+        'card_number', 'card_exp_month', 'card_exp_year',
+        'cardholder_name', 'card_type', 'billing_street', 'billing_city',
+        'billing_state', 'billing_zip_code'
+    ]
+    
+    for field in required_fields:
+        if field not in payment_data or not payment_data[field]:
+            return False, f"Missing required field: {field}"
+    
+    # Validate card type
+    if payment_data['card_type'] not in ('debit', 'credit'):
+        return False, "card_type must be 'debit' or 'credit'"
+    
+    # Basic card number validation (length)
+    card_num = str(payment_data['card_number']).replace(' ', '')
+    if not (13 <= len(card_num) <= 19) or not card_num.isdigit():
+        return False, "Invalid card number format"
+    
+    # Validate expiration month/year
+    try:
+        exp_month = int(payment_data['card_exp_month'])
+        exp_year = int(payment_data['card_exp_year'])
+        if not (1 <= exp_month <= 12):
+            return False, "Expiration month must be between 01 and 12"
+        if exp_year < 2024 or exp_year > 2099:
+            return False, "Expiration year must be between 2024 and 2099"
+    except (ValueError, TypeError):
+        return False, "Invalid expiration date format"
+    
+    # Validate zip code (5 digits)
+    zip_code = str(payment_data['billing_zip_code'])
+    if len(zip_code) != 5 or not zip_code.isdigit():
+        return False, "Billing zip code must be 5 digits"
+    
+    # Validate state (2 characters)
+    state = str(payment_data['billing_state'])
+    if len(state) != 2 or not state.isalpha():
+        return False, "Billing state must be 2-letter code"
+    
+    return True, None
 
 
 
@@ -365,14 +419,35 @@ def checkout_booking(booking_id):
     """
     Confirm a booking and issue tickets.
 
-    Request JSON:
+    Request JSON (with new card):
     {
       "seat_ids": [1, 2, 3],
       "ticket_types": {
         "1": "adult",
         "2": "adult",
         "3": "child"
+      },
+      "promo_code": "SUMMER20",
+      "payment": {
+        "card_number": "4111111111111111",
+        "card_exp_month": "12",
+        "card_exp_year": "2025",
+        "card_cvv": "123",
+        "cardholder_name": "John Doe",
+        "card_type": "credit",
+        "billing_street": "123 Main St",
+        "billing_city": "San Francisco",
+        "billing_state": "CA",
+        "billing_zip_code": "94102"
       }
+    }
+
+    Or with saved card:
+    {
+      "seat_ids": [1, 2, 3],
+      "ticket_types": {...},
+      "promo_code": "SUMMER20",
+      "billing_info_id": "uuid-of-saved-card"
     }
     """
     user = getattr(g, "current_user", None)
@@ -385,6 +460,8 @@ def checkout_booking(booking_id):
     seat_ids = data.get("seat_ids")
     ticket_types = data.get("ticket_types", {})
     promo_code = data.get("promo_code")
+    payment_data = data.get("payment")
+    billing_info_id = data.get("billing_info_id")
 
     if not isinstance(seat_ids, list) or not seat_ids:
         return _bad_request("`seat_ids` must be a non-empty list of integers.")
@@ -396,6 +473,24 @@ def checkout_booking(booking_id):
 
     if not isinstance(ticket_types, dict):
         return _bad_request("`ticket_types` must be an object/dict.")
+
+    # Validate payment data - either payment data or billing_info_id must be provided
+    if not payment_data and not billing_info_id:
+        return _bad_request("Either 'payment' or 'billing_info_id' must be provided.")
+
+    if payment_data:
+        is_valid, error_msg = _validate_card_payment(payment_data)
+        if not is_valid:
+            return _bad_request(f"Invalid payment data: {error_msg}")
+    
+    if billing_info_id:
+        # Verify the saved card belongs to the user
+        billing_info = BillingInfo.query.filter_by(
+            billing_info_id=billing_info_id,
+            user_id=user_id
+        ).first()
+        if not billing_info:
+            return _bad_request("Saved card not found or does not belong to this user.")
 
     booking = Booking.query.filter_by(booking_id=booking_id).first()
     if not booking:
@@ -447,8 +542,11 @@ def checkout_booking(booking_id):
     if promo_code:
         promotion = Promotion.query.filter_by(code=promo_code, is_active=True).first()
         if promotion:
-            discount_cents = int(new_total * float(promotion.discount_percent) / 100)
-            booking.total_cents -= discount_cents
+            discount = int(new_total * float(promotion.discount_percent) / 100)
+            booking.total_cents -= discount
+    else:
+        discount = 0
+        promotion = None
 
     # Check active holds for this user
     active_holds = SeatHold.query.filter(
@@ -494,15 +592,16 @@ def checkout_booking(booking_id):
             booking_id=booking.booking_id,
             showtime_id=booking.showtime_id,
             seat_id=sid,
-            ticket_type=ttype,
             price_cents=price_cents,
-            created_at=now,
         )
         db.session.add(ticket)
         tickets.append(ticket)
 
     booking.status = "CONFIRMED"
     booking.expires_at = None
+
+    # Payment data is validated but not stored separately
+    # (payment info already stored in users/billing_info table)
 
     SeatHold.query.filter(
         SeatHold.showtime_id == booking.showtime_id,
@@ -512,6 +611,48 @@ def checkout_booking(booking_id):
 
     db.session.commit()
 
+    # Get seat info for email and response
+    seat_objects = Seat.query.filter(Seat.seat_id.in_(seat_ids)).all()
+    seat_display_map = {s.seat_id: f"{s.row_label}{s.seat_number}" for s in seat_objects}
+    seats_display = ", ".join([f"{s.row_label}{s.seat_number}" for s in sorted(seat_objects, key=lambda x: (x.row_label, x.seat_number))])
+    
+    # Get movie and auditorium info for email
+    movie = Movie.query.filter_by(movie_id=showtime.movie_id).first()
+    auditorium = Auditorium.query.filter_by(auditorium_id=showtime.auditorium_id).first()
+    
+    # Format dates for email
+    showtime_date = showtime.starts_at.strftime("%B %d, %Y") if showtime.starts_at else "N/A"
+    showtime_time = showtime.starts_at.strftime("%I:%M %p") if showtime.starts_at else "N/A"
+    
+    # Format prices for email
+    def format_price(cents):
+        return f"${cents / 100:.2f}"
+    
+    subtotal_str = format_price(new_total + (discount if promo_code else 0))
+    total_str = format_price(new_total)
+    discount_str = format_price(discount) if promo_code else None
+    discount_percent = int(promotion.discount_percent) if promo_code else None
+    
+    # Send booking receipt email
+    try:
+        send_booking_receipt(
+            user_email=user.email,
+            user_name=f"{user.first_name} {user.last_name}",
+            booking_id=str(booking.booking_id),
+            movie_title=movie.title if movie else "Movie",
+            showtime_date=showtime_date,
+            showtime_time=showtime_time,
+            auditorium_name=auditorium.name if auditorium else "Theater",
+            seats=seats_display,
+            ticket_count=len(seat_ids),
+            subtotal=subtotal_str,
+            total=total_str,
+            discount=discount_str,
+            discount_percent=discount_percent
+        )
+    except Exception as e:
+        current_app.logger.error(f"Failed to send booking receipt email: {e}")
+
     return (
         jsonify(
             {
@@ -519,13 +660,25 @@ def checkout_booking(booking_id):
                 "status": booking.status,
                 "showtime_id": str(booking.showtime_id),
                 "user_id": str(booking.user_id),
-                "total_cents": booking.total_cents,
+                "user_email": user.email,
+                "total_cents": new_total,
                 "ticket_counts": counts_from_payload,
+                "seats": seats_display,
+                "movie": {
+                    "title": movie.title if movie else "Movie",
+                },
+                "showtime": {
+                    "starts_at": showtime.starts_at.isoformat() if showtime.starts_at else None,
+                },
+                "auditorium": {
+                    "name": auditorium.name if auditorium else "Theater",
+                },
                 "tickets": [
                     {
                         "ticket_id": str(t.ticket_id),
                         "seat_id": t.seat_id,
-                        "ticket_type": t.ticket_type,
+                        "seat_display": seat_display_map.get(t.seat_id, f"?{t.seat_id}"),
+                        "ticket_type": ticket_types.get(str(t.seat_id), "unknown"),
                         "price_cents": t.price_cents,
                     }
                     for t in tickets
@@ -568,4 +721,51 @@ def get_user_bookings():
                 "starts_at": showtime.starts_at.isoformat(),
             },
         })
+    return jsonify({"data": result}), 200
+
+
+def get_saved_cards():
+    """
+    Get all saved cards for the current user from BillingInfo.
+    Decrypts sensitive card data before returning.
+    """
+    user = getattr(g, "current_user", None)
+    if not user:
+        return _bad_request("Unauthorized", code=401)
+
+    user_id = user.user_id
+
+    saved_cards = BillingInfo.query.filter_by(
+        user_id=user_id
+    ).order_by(BillingInfo.created_at.desc()).all()
+
+    result = []
+    encryptor = CardEncryption()
+    
+    for card in saved_cards:
+        try:
+            # Decrypt sensitive fields
+            card_number = encryptor.decrypt(card.card_number) if card.card_number else ""
+            card_last4 = card_number[-4:] if card_number else "0000"
+            cardholder_name = encryptor.decrypt(card.cardholder_name) if card.cardholder_name else ""
+            card_exp = encryptor.decrypt(card.card_exp) if card.card_exp else ""
+        except Exception as e:
+            current_app.logger.warning(f"Failed to decrypt card data: {e}")
+            card_last4 = "XXXX"
+            cardholder_name = "••••••••"
+            card_exp = "••/••"
+            
+        result.append({
+            "billing_info_id": str(card.billing_info_id),
+            "cardholder_name": cardholder_name,
+            "card_type": card.card_type,
+            "card_last4": card_last4,
+            "card_exp": card_exp,
+            "billing_street": card.billing_street,
+            "billing_city": card.billing_city,
+            "billing_state": card.billing_state,
+            "billing_zip_code": card.billing_zip_code,
+            "created_at": card.created_at.isoformat() if card.created_at else None,
+        })
+
     return jsonify({"data": result}), 200
