@@ -16,3 +16,8 @@ def create_booking_route():
 @require_auth
 def checkout_booking_route(booking_id):
     return booking_controller.checkout_booking(booking_id)
+
+@bp.get("/history")
+@require_auth
+def get_order_history_route():
+    return booking_controller.get_user_bookings()

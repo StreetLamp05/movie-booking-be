@@ -4,7 +4,7 @@ from .. import db
 from ..models.promotions import Promotion
 from ..models.users import User
 from ..services.email_service import send_promotion_emails_bulk
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def _to_promotion_row(p: Promotion):
@@ -234,3 +234,25 @@ def send_promotion_emails(_admin_user, promotion_id):
         }), 200
     except Exception as e:
         return jsonify({"error": {"code": "SERVER_ERROR", "message": str(e)}}), 500
+
+def validate_promo_code():
+    data = request.get_json(silent=True) or {}
+    code = data.get("code") 
+            
+    if not code:
+        return jsonify({"message": "Promo code is required"}), 400
+    
+    now = datetime.now(timezone.utc)
+    promotion = Promotion.query.filter_by(code=code.strip().upper(), is_active=True).first()
+
+    if not promotion:
+        return jsonify({"message": "Invalid promo code"}), 404
+    
+    if not (promotion.starts_at <= now <= promotion.ends_at):
+        return jsonify({"message": "Promo code has expired"}), 400
+    
+    return jsonify({
+        "code": promotion.code,
+        "discount_percent": float(promotion.discount_percent),
+        "description": promotion.description,
+    }), 200
