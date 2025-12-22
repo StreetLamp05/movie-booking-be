@@ -27,10 +27,11 @@ def create_new_showtimes(showtimes: int, days_ahead: int = 7) -> None:
     '''
     Creates n number of showtimes a week from the current date.
     '''
-    all_movies = Movie.query.all()
+    movie_count = Movie.query.count()
+    half_movies = Movie.query.limit(movie_count // 2).all()
     all_auditoriums = Auditorium.query.all()
 
-    if not all_movies or not all_auditoriums:
+    if not half_movies or not all_auditoriums:
         print("Missing movies or auditoriums to seed showtimes.")
         return
 
@@ -44,7 +45,7 @@ def create_new_showtimes(showtimes: int, days_ahead: int = 7) -> None:
     }
 
     for _ in range(showtimes):
-        movie = random.choice(all_movies)
+        movie = random.choice(half_movies)
         auditorium = random.choice(all_auditoriums)
         
         random_hour = random.randint(10, 22)
