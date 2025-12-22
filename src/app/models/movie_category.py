@@ -1,6 +1,6 @@
 from .. import db
 
-# association table for movies <-> categories
+# junction table for movies <-> categories
 movie_categories = db.Table(
     "movie_categories",
     db.Column(
