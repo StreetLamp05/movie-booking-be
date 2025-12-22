@@ -6,13 +6,19 @@ build/
 
 *.log
 
+.env*
 .env
 .env.*
 !env.example
 
+
+
 .idea
 .idea/
+.idea*
 
 db_data/
 *.pid
 
+__pycache__/
+*.pyc
